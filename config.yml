@@ -1,0 +1,11 @@
+migration_mode: true
+
+log:
+  level: debug
+
+postgres:
+  dsn: postgres://postgres:password@127.0.0.1:5432/vilingvum?sslmode=disable
+  log_level: "debug"
+
+bot:
+  token: "token"
