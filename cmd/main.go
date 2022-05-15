@@ -40,7 +40,7 @@ func runMain(ctx context.Context, args []string) error {
 	switch cmd := args[0]; cmd {
 	case "serve-bot":
 		return serveBotCmd(ctx, flags)
-	case "server-site":
+	case "serve-site":
 		return serveSiteCmd(ctx, flags)
 	case "migrate":
 		return migrateCmd(ctx, flags)

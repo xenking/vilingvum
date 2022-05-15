@@ -5,8 +5,6 @@ import (
 
 	"github.com/cristalhq/aconfig"
 	"github.com/cristalhq/aconfig/aconfigyaml"
-	"github.com/gofiber/fiber/v2/middleware/cache"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
 )
 
 // ApplicationVersion represents the version of current application.
@@ -31,20 +29,25 @@ type ApplicationConfig struct {
 }
 
 type ServerConfig struct {
-	Addr    string `default:"localhost:3000"`
-	Version string `default:"1.0.0"`
+	Addr string
 
-	Prefork         bool
-	FilesFolder     string `default:"./files"`
-	FilesPrefix     string `default:"files"`
 	ViewsFolder     string `default:"./static/templates"`
 	ViewsExt        string `default:".html"`
 	StaticFolder    string `default:"./static"`
 	StaticPrefix    string `default:"/"`
 	TemplatesPrefix string `default:"templates"`
 
-	Limiter limiter.Config
-	Cache   cache.Config
+	Limiter ServerLimiterConfig
+	Cache   ServerCacheConfig
+}
+
+type ServerLimiterConfig struct {
+	MaxRequests int           `default:"100"`
+	Expiration  time.Duration `default:"1m"`
+}
+
+type ServerCacheConfig struct {
+	Expiration time.Duration `default:"1h"`
 }
 
 type BotConfig struct {
