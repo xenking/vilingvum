@@ -15,10 +15,10 @@ import (
 	"github.com/phuslu/log"
 	fiberlogger "github.com/phuslu/log-contrib/fiber"
 
-	"tgbot/config"
-	"tgbot/database"
-	"tgbot/pkg/logger"
-	"tgbot/pkg/storage/memory"
+	"github.com/xenking/vilingvum/config"
+	"github.com/xenking/vilingvum/database"
+	"github.com/xenking/vilingvum/pkg/logger"
+	"github.com/xenking/vilingvum/pkg/storage/memory"
 )
 
 type Server struct {
@@ -26,8 +26,7 @@ type Server struct {
 	db *database.DB
 }
 
-func New(cfg config.ServerConfig, db *database.DB) *Server {
-
+func New(cfg *config.ServerConfig, db *database.DB) *Server {
 	s := &Server{
 		db: db,
 		App: fiber.New(fiber.Config{
@@ -42,7 +41,7 @@ func New(cfg config.ServerConfig, db *database.DB) *Server {
 	return s.setupMiddlewares(cfg)
 }
 
-func (s *Server) setupMiddlewares(cfg config.ServerConfig) *Server {
+func (s *Server) setupMiddlewares(cfg *config.ServerConfig) *Server {
 	s.App.Use(recover.New())
 	s.App.Use(requestid.New())
 	s.App.Use(csrf.New())

@@ -54,9 +54,7 @@ linters-settings:
 linters:
   enable:
     - asciicheck
-    - bidichk
     - bodyclose
-    - contextcheck
     - deadcode
     - depguard
     - dogsled
@@ -73,7 +71,6 @@ linters:
     - gofmt
     - gofumpt
     - goheader
-    - gomoddirectives
     - gomodguard
     - goprintffuncname
     - gosec
@@ -90,14 +87,12 @@ linters:
     - nolintlint
     - prealloc
     - predeclared
-    - promlinter
     - revive
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
     - structcheck
     - stylecheck
-    - tenv
     - testpackage
     - thelper
     - tparallel
@@ -130,11 +125,6 @@ linters:
     - interfacer
     - gomnd
     - ifshort
-    - tagliatelle
-    - varnamelen
-    - ireturn
-    - nilnil
-    - errname
     - golint
 
 run:

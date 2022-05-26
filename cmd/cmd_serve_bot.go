@@ -8,10 +8,10 @@ import (
 	"github.com/cloudflare/tableflip"
 	"github.com/phuslu/log"
 
-	"tgbot/config"
-	"tgbot/database"
-	"tgbot/internal/application"
-	"tgbot/pkg/logger"
+	"github.com/xenking/vilingvum/config"
+	"github.com/xenking/vilingvum/database"
+	"github.com/xenking/vilingvum/internal/application"
+	"github.com/xenking/vilingvum/pkg/logger"
 )
 
 func serveBotCmd(ctx context.Context, flags cmdFlags) error {
@@ -61,7 +61,7 @@ func serveBot(ctx context.Context, cfg *config.Config, bot *application.Bot) err
 		upg.Stop()
 	}()
 
-	go bot.Start()
+	go bot.Bot.Start()
 
 	log.Info().Msg("service ready")
 	if upgErr := upg.Ready(); upgErr != nil {

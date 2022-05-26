@@ -5,7 +5,7 @@ import (
 
 	"github.com/phuslu/log"
 
-	"tgbot/config"
+	"github.com/xenking/vilingvum/config"
 )
 
 var Log *log.Logger

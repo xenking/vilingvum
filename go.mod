@@ -1,4 +1,4 @@
-module tgbot
+module github.com/xenking/vilingvum
 
 go 1.17
 
@@ -18,7 +18,6 @@ require (
 	github.com/phuslu/log v1.0.77
 	github.com/phuslu/log-contrib/fiber v0.0.0-20210112030509-83e99a49e17f
 	github.com/pkg/errors v0.9.1
-	github.com/segmentio/ksuid v1.0.4
 	gopkg.in/telebot.v3 v3.0.0
 )
 

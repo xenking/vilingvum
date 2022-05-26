@@ -11,28 +11,13 @@ import (
 	"github.com/jackc/pgtype"
 )
 
-type InviteCode struct {
-	Code      string        `db:"code" json:"code"`
-	CreatedBy sql.NullInt64 `db:"created_by" json:"created_by"`
-	UsedBy    sql.NullInt64 `db:"used_by" json:"used_by"`
-	UsedAt    *time.Time    `db:"used_at" json:"used_at"`
-	CreatedAt time.Time     `db:"created_at" json:"created_at"`
-}
-
-type Post struct {
-	ID         int64         `db:"id" json:"id"`
-	NextPostID sql.NullInt64 `db:"next_post_id" json:"next_post_id"`
-	Content    pgtype.JSONB  `db:"content" json:"content"`
-	UpdatedAt  time.Time     `db:"updated_at" json:"updated_at"`
-	CreatedAt  time.Time     `db:"created_at" json:"created_at"`
-}
-
-type PostEntry struct {
-	PostID    int64     `db:"post_id" json:"post_id"`
-	UserID    int64     `db:"user_id" json:"user_id"`
-	Status    string    `db:"status" json:"status"`
-	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
+type Topic struct {
+	ID          int64         `db:"id" json:"id"`
+	NextTopicID sql.NullInt64 `db:"next_topic_id" json:"next_topic_id"`
+	Type        string        `db:"type" json:"type"`
+	Content     pgtype.JSONB  `db:"content" json:"content"`
+	UpdatedAt   time.Time     `db:"updated_at" json:"updated_at"`
+	CreatedAt   time.Time     `db:"created_at" json:"created_at"`
 }
 
 type User struct {
@@ -42,7 +27,15 @@ type User struct {
 	State       string       `db:"state" json:"state"`
 	IsAdmin     bool         `db:"is_admin" json:"is_admin"`
 	Settings    pgtype.JSONB `db:"settings" json:"settings"`
-	InviteCode  string       `db:"invite_code" json:"invite_code"`
+	Dictionary  pgtype.JSONB `db:"dictionary" json:"dictionary"`
 	ActiveUntil time.Time    `db:"active_until" json:"active_until"`
 	CreatedAt   time.Time    `db:"created_at" json:"created_at"`
+}
+
+type UserAnswer struct {
+	UserID    int64        `db:"user_id" json:"user_id"`
+	TopicID   int64        `db:"topic_id" json:"topic_id"`
+	Response  pgtype.JSONB `db:"response" json:"response"`
+	UpdatedAt time.Time    `db:"updated_at" json:"updated_at"`
+	CreatedAt time.Time    `db:"created_at" json:"created_at"`
 }

@@ -27,7 +27,7 @@ func New() *Storage {
 		done:       make(chan struct{}),
 	}
 
-	// Start garbage collector
+	// HandleStart garbage collector
 	go store.gc()
 
 	return store
@@ -35,7 +35,7 @@ func New() *Storage {
 
 // Get value by key
 func (s *Storage) Get(key string) ([]byte, error) {
-	if len(key) <= 0 {
+	if key == "" {
 		return nil, nil
 	}
 	v, ok := s.db.Get(key)
@@ -50,7 +50,7 @@ func (s *Storage) Get(key string) ([]byte, error) {
 // Set key with value
 func (s *Storage) Set(key string, val []byte, exp time.Duration) error {
 	// Ain't Nobody Got Time For That
-	if len(key) <= 0 || len(val) <= 0 {
+	if key == "" || len(val) == 0 {
 		return nil
 	}
 
@@ -60,28 +60,32 @@ func (s *Storage) Set(key string, val []byte, exp time.Duration) error {
 	}
 
 	s.db.Set(key, entry{val, expire})
+
 	return nil
 }
 
 // Delete key by key
 func (s *Storage) Delete(key string) error {
 	// Ain't Nobody Got Time For That
-	if len(key) <= 0 {
+	if key == "" {
 		return nil
 	}
 	s.db.Del(key)
+
 	return nil
 }
 
 // Reset all keys
 func (s *Storage) Reset() error {
 	s.db = &hashmap.HashMap{}
+
 	return nil
 }
 
 // Close the memory storage
 func (s *Storage) Close() error {
 	s.done <- struct{}{}
+
 	return nil
 }
 

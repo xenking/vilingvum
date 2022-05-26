@@ -9,9 +9,9 @@ import (
 	"github.com/phuslu/log"
 	"github.com/pkg/errors"
 
-	"tgbot/config"
-	"tgbot/database"
-	"tgbot/pkg/logger"
+	"github.com/xenking/vilingvum/config"
+	"github.com/xenking/vilingvum/database"
+	"github.com/xenking/vilingvum/pkg/logger"
 )
 
 func migrateCmd(ctx context.Context, flags cmdFlags) error {

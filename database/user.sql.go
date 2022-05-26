@@ -13,16 +13,15 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, name, username, invite_code, state, active_until)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, username, state, is_admin, settings, invite_code, active_until, created_at
+INSERT INTO users (id, name, username, state, active_until)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, username, state, is_admin, settings, dictionary, active_until, created_at
 `
 
 type CreateUserParams struct {
 	ID          int64     `db:"id" json:"id"`
 	Name        string    `db:"name" json:"name"`
 	Username    string    `db:"username" json:"username"`
-	InviteCode  string    `db:"invite_code" json:"invite_code"`
 	State       string    `db:"state" json:"state"`
 	ActiveUntil time.Time `db:"active_until" json:"active_until"`
 }
@@ -32,7 +31,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User,
 		arg.ID,
 		arg.Name,
 		arg.Username,
-		arg.InviteCode,
 		arg.State,
 		arg.ActiveUntil,
 	)
@@ -44,7 +42,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User,
 		&i.State,
 		&i.IsAdmin,
 		&i.Settings,
-		&i.InviteCode,
+		&i.Dictionary,
 		&i.ActiveUntil,
 		&i.CreatedAt,
 	)
@@ -52,7 +50,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User,
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, name, username, state, is_admin, settings, invite_code, active_until, created_at
+SELECT id, name, username, state, is_admin, settings, dictionary, active_until, created_at
 FROM users
 WHERE id = $1
 `
@@ -67,39 +65,26 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (*User, error) {
 		&i.State,
 		&i.IsAdmin,
 		&i.Settings,
-		&i.InviteCode,
+		&i.Dictionary,
 		&i.ActiveUntil,
 		&i.CreatedAt,
 	)
 	return &i, err
 }
 
-const isUserExists = `-- name: IsUserExists :one
-SELECT true
-FROM users
-WHERE id = $1
-LIMIT 1
-`
-
-func (q *Queries) IsUserExists(ctx context.Context, id int64) (bool, error) {
-	row := q.db.QueryRow(ctx, isUserExists, id)
-	var column_1 bool
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const listActiveUsers = `-- name: ListActiveUsers :many
-SELECT id, name, settings, is_admin
+SELECT id, name, settings, dictionary, is_admin
 FROM users
 WHERE active_until > now()
   AND state = 'active'
 `
 
 type ListActiveUsersRow struct {
-	ID       int64        `db:"id" json:"id"`
-	Name     string       `db:"name" json:"name"`
-	Settings pgtype.JSONB `db:"settings" json:"settings"`
-	IsAdmin  bool         `db:"is_admin" json:"is_admin"`
+	ID         int64        `db:"id" json:"id"`
+	Name       string       `db:"name" json:"name"`
+	Settings   pgtype.JSONB `db:"settings" json:"settings"`
+	Dictionary pgtype.JSONB `db:"dictionary" json:"dictionary"`
+	IsAdmin    bool         `db:"is_admin" json:"is_admin"`
 }
 
 func (q *Queries) ListActiveUsers(ctx context.Context) ([]*ListActiveUsersRow, error) {
@@ -115,6 +100,7 @@ func (q *Queries) ListActiveUsers(ctx context.Context) ([]*ListActiveUsersRow, e
 			&i.ID,
 			&i.Name,
 			&i.Settings,
+			&i.Dictionary,
 			&i.IsAdmin,
 		); err != nil {
 			return nil, err

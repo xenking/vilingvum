@@ -8,41 +8,29 @@ CREATE TABLE IF NOT EXISTS users
     state        TEXT               NOT NULL,
     is_admin     BOOLEAN            NOT NULL DEFAULT false,
     settings     JSONB              NOT NULL DEFAULT '{}',
-    invite_code  TEXT               NOT NULL,
+    dictionary   JSONB              NOT NULL DEFAULT '{}',
     active_until TIMESTAMP          NOT NULL,
     created_at   TIMESTAMP          NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS invite_codes
+
+CREATE TABLE IF NOT EXISTS topics
 (
-    code       TEXT UNIQUE PRIMARY KEY NOT NULL,
-    created_by BIGINT REFERENCES users (id),
-    used_by    BIGINT REFERENCES users (id),
-    used_at    TIMESTAMP,
-    created_at TIMESTAMP               NOT NULL DEFAULT now()
+    id            BIGSERIAL PRIMARY KEY,
+    next_topic_id BIGSERIAL REFERENCES topics (id),
+    type          TEXT      NOT NULL,
+    content       JSONB     NOT NULL,
+    updated_at    TIMESTAMP NOT NULL DEFAULT now(),
+    created_at    TIMESTAMP NOT NULL DEFAULT now()
 );
 
-ALTER TABLE users
-    ADD CONSTRAINT users_invite_codes_fk
-        FOREIGN KEY (invite_code) REFERENCES invite_codes (code);
-
-CREATE TABLE IF NOT EXISTS posts
+CREATE TABLE IF NOT EXISTS user_answers
 (
-    id           BIGSERIAL PRIMARY KEY,
-    next_post_id BIGSERIAL REFERENCES posts (id),
-    content      JSONB                 NOT NULL,
-    updated_at   TIMESTAMP             NOT NULL DEFAULT now(),
-    created_at   TIMESTAMP             NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS post_entries
-(
-    post_id    BIGSERIAL NOT NULL REFERENCES posts (id),
     user_id    BIGINT    NOT NULL REFERENCES users (id),
-    status     TEXT      NOT NULL,
+    topic_id   BIGSERIAL NOT NULL REFERENCES topics (id),
+    response   JSONB     NOT NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT now(),
     created_at TIMESTAMP NOT NULL DEFAULT now(),
-    CONSTRAINT post_entries_pk
-        PRIMARY KEY (post_id, user_id)
+    CONSTRAINT user_answers_pk
+        PRIMARY KEY (user_id, topic_id)
 );
-

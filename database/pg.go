@@ -8,9 +8,9 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 
-	"tgbot/config"
-	"tgbot/database/adapter"
-	"tgbot/pkg/logger"
+	"github.com/xenking/vilingvum/config"
+	"github.com/xenking/vilingvum/database/adapter"
+	"github.com/xenking/vilingvum/pkg/logger"
 )
 
 type DB struct {

@@ -16,7 +16,7 @@ type Config struct {
 	GracefulShutdownDelay time.Duration `default:"15s"`
 
 	App      ApplicationConfig
-	Server   ServerConfig
+	Server   *ServerConfig
 	Bot      BotConfig
 	Postgres PostgresConfig
 	Log      *LoggerConfig

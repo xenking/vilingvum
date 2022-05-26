@@ -1,14 +1,11 @@
-lint: ## Run linter for the code
-	fmt
+lint: fmt ## Run linter for the code
 	golangci-lint run ./... --fix --timeout 10m -v -c .golangci.yml
 
 fmt: ## Format all the code
 	gofumpt -l -w .
-	gci -w -local tgbot/ .
+	gci -w -local github.com/xenking/vilingvum/ .
 
-generate: ## Generate the code
-	gen-db-models
-	fmt
+generate: gen-db-models fmt ## Generate the code
 
 gen-db-models: ## Generate the DB models
 	sqlc -f ./database/sql/sqlc.yml generate

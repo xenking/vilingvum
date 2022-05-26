@@ -8,10 +8,10 @@ import (
 	"github.com/cloudflare/tableflip"
 	"github.com/phuslu/log"
 
-	"tgbot/api/server"
-	"tgbot/config"
-	"tgbot/database"
-	"tgbot/pkg/logger"
+	"github.com/xenking/vilingvum/api/server"
+	"github.com/xenking/vilingvum/config"
+	"github.com/xenking/vilingvum/database"
+	"github.com/xenking/vilingvum/pkg/logger"
 )
 
 func serveSiteCmd(ctx context.Context, flags cmdFlags) error {
