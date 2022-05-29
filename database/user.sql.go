@@ -68,16 +68,17 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (*User, error) {
 }
 
 const listActiveUsers = `-- name: ListActiveUsers :many
-SELECT id, name, settings, is_admin
+SELECT id, name, settings, is_admin, active_until
 FROM users
 WHERE state = 'active'
 `
 
 type ListActiveUsersRow struct {
-	ID       int64        `db:"id" json:"id"`
-	Name     string       `db:"name" json:"name"`
-	Settings pgtype.JSONB `db:"settings" json:"settings"`
-	IsAdmin  bool         `db:"is_admin" json:"is_admin"`
+	ID          int64        `db:"id" json:"id"`
+	Name        string       `db:"name" json:"name"`
+	Settings    pgtype.JSONB `db:"settings" json:"settings"`
+	IsAdmin     bool         `db:"is_admin" json:"is_admin"`
+	ActiveUntil *time.Time   `db:"active_until" json:"active_until"`
 }
 
 func (q *Queries) ListActiveUsers(ctx context.Context) ([]*ListActiveUsersRow, error) {
@@ -94,6 +95,7 @@ func (q *Queries) ListActiveUsers(ctx context.Context) ([]*ListActiveUsersRow, e
 			&i.Name,
 			&i.Settings,
 			&i.IsAdmin,
+			&i.ActiveUntil,
 		); err != nil {
 			return nil, err
 		}
@@ -132,17 +134,18 @@ func (q *Queries) ListAdmins(ctx context.Context) ([]int64, error) {
 }
 
 const listPaidUsers = `-- name: ListPaidUsers :many
-SELECT id, name, settings, is_admin
+SELECT id, name, settings, is_admin, active_until
 FROM users
 WHERE active_until > now()
   AND state = 'active'
 `
 
 type ListPaidUsersRow struct {
-	ID       int64        `db:"id" json:"id"`
-	Name     string       `db:"name" json:"name"`
-	Settings pgtype.JSONB `db:"settings" json:"settings"`
-	IsAdmin  bool         `db:"is_admin" json:"is_admin"`
+	ID          int64        `db:"id" json:"id"`
+	Name        string       `db:"name" json:"name"`
+	Settings    pgtype.JSONB `db:"settings" json:"settings"`
+	IsAdmin     bool         `db:"is_admin" json:"is_admin"`
+	ActiveUntil *time.Time   `db:"active_until" json:"active_until"`
 }
 
 func (q *Queries) ListPaidUsers(ctx context.Context) ([]*ListPaidUsersRow, error) {
@@ -159,6 +162,7 @@ func (q *Queries) ListPaidUsers(ctx context.Context) ([]*ListPaidUsersRow, error
 			&i.Name,
 			&i.Settings,
 			&i.IsAdmin,
+			&i.ActiveUntil,
 		); err != nil {
 			return nil, err
 		}

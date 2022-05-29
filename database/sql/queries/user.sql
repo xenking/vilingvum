@@ -13,12 +13,12 @@ FROM users
 WHERE id = $1;
 
 -- name: ListActiveUsers :many
-SELECT id, name, settings, is_admin
+SELECT id, name, settings, is_admin, active_until
 FROM users
 WHERE state = 'active';
 
 -- name: ListPaidUsers :many
-SELECT id, name, settings, is_admin
+SELECT id, name, settings, is_admin, active_until
 FROM users
 WHERE active_until > now()
   AND state = 'active';

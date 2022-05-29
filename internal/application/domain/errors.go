@@ -19,7 +19,7 @@ func (e Error) Error() string {
 
 func (e Error) Send(bot *tele.Bot, recipient tele.Recipient, options *tele.SendOptions) (*tele.Message, error) {
 	if e.Message == "" {
-		e.Message = "Unexpected error occurred. Contact the bot owner.\nError: " + e.Err.Error()
+		e.Message = "Unexpected error occurred. Contact the developers.\nError: " + e.Err.Error()
 	}
 
 	return bot.Send(recipient, e.Message, options)

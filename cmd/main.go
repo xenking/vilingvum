@@ -78,8 +78,7 @@ func appContext() (context.Context, context.CancelFunc) {
 }
 
 type cmdFlags struct {
-	Config     string `flag:"cfg" default:"config.yml"`
-	ImportPath string `flag:"file"`
+	Config string `flag:"cfg" default:"config.yml"`
 }
 
 func loadFlags(cfg interface{}, args []string) error {

@@ -38,6 +38,13 @@ func serveBotCmd(ctx context.Context, flags cmdFlags) error {
 		return err
 	}
 
+	if cfg.ImportMode {
+		err = importDatabase(ctx, db, cfg.Import)
+		if err != nil {
+			return err
+		}
+	}
+
 	bot, err := application.New(ctx, cfg.Bot, db)
 	if err != nil {
 		return err

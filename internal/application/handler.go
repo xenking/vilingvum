@@ -18,23 +18,26 @@ func (b *Bot) getUser(c tele.Context) *domain.User {
 func (b *Bot) HandleStart(ctx context.Context) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		user := b.users.Get(c.Sender().ID)
-		if user != nil {
+
+		payload := c.Message().Payload
+		if user != nil && payload == "" {
 			return c.Send(fmt.Sprintf("Hello %s !", user.Name), menu.Main)
+		} else if user == nil {
+			var err error
+			user, err = b.users.Add(ctx, c.Sender())
+			if err != nil {
+				return err
+			}
 		}
 
-		var err error
-
-		user, err = b.users.Add(ctx, c.Sender())
-		if err != nil {
-			return err
-		}
-
-		if c.Message().Payload != "" {
+		if payload != "" {
 			active := time.Now().AddDate(0, 1, 0)
-			err = b.users.UpdateLicense(user.ID, active)
+			err := b.users.UpdateLicense(user.ID, active)
 			if err != nil {
 				return c.Send(domain.NewError(err))
 			}
+
+			return c.Send("Your license has been activated", menu.Main)
 		}
 
 		return c.Send("Hello there! I'm a bot", menu.Main)

@@ -13,6 +13,7 @@ var ApplicationVersion string
 // Config is a structure for values of the environment variables.
 type Config struct {
 	MigrationMode         bool          `default:"false"`
+	ImportMode            bool          `default:"false"`
 	GracefulShutdownDelay time.Duration `default:"15s"`
 
 	App      ApplicationConfig
@@ -20,6 +21,7 @@ type Config struct {
 	Bot      BotConfig
 	Postgres PostgresConfig
 	Log      *LoggerConfig
+	Import   ImportConfig
 }
 
 type ApplicationConfig struct {
@@ -63,6 +65,10 @@ type PostgresConfig struct {
 type LoggerConfig struct {
 	Level      string `default:"debug"`
 	WithCaller int    `default:"1"`
+}
+
+type ImportConfig struct {
+	Path string `default:"./database.csv"`
 }
 
 // NewConfig loads values from environment variables and returns loaded configuration.

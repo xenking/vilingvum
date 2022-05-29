@@ -63,8 +63,7 @@ func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic) (*domain.To
 		topic.Raw.WriteString(topic.VideoURL)
 	case domain.TopicTypeQuestion, domain.TopicTypeTest:
 		topic.Raw.WriteString(topic.Text)
-		topic.Raw.WriteString(":\n")
-		topic.Raw.WriteByte('*')
+		topic.Raw.WriteString(":\n*")
 		topic.Raw.WriteString(topic.Question)
 		topic.Raw.WriteByte('*')
 	}
@@ -135,7 +134,11 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 			return c.Send("You are not registered")
 		}
 
-		a, err := json.Marshal(answer)
+		buf, err := json.Marshal(domain.UserAnswer{
+			TopicType: topic.Type,
+			Text:      topic.Text,
+			Answer:    answer,
+		})
 		if err != nil {
 			return c.Send(domain.NewError(err))
 		}
@@ -144,7 +147,7 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 			UserID:  user.ID,
 			TopicID: topic.ID,
 			Response: pgtype.JSONB{
-				Bytes:  a,
+				Bytes:  buf,
 				Status: pgtype.Present,
 			},
 		})
@@ -198,8 +201,9 @@ func (b *Bot) HandleCallbackNextTopic(ctx context.Context, topic *domain.Topic) 
 			return c.Send("You are not registered")
 		}
 
-		buf, err := json.Marshal(&domain.TopicAnswer{
-			Text: topic.Text,
+		buf, err := json.Marshal(domain.UserAnswer{
+			TopicType: topic.Type,
+			Text:      topic.Text,
 		})
 		if err != nil {
 			return c.Send(domain.NewError(err))

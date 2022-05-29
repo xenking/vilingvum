@@ -1,0 +1,11 @@
+README.md
+LICENSE.md
+docker-compose.yml
+.gitignore
+.env
+build
+**/*.fiber.gz
+old_versions
+.golangci.yml
+*.yml
+database.csv

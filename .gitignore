@@ -14,6 +14,9 @@
 .idea
 old_versions
 database.csv
+docker-compose.yml
+*.yml
+*.env
 
 # Dependency directories (remove the comment below to include it)
 # vendor/

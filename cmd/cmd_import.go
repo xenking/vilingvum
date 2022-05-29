@@ -41,11 +41,11 @@ func importCmd(ctx context.Context, flags cmdFlags) error {
 		return err
 	}
 
-	return importDatabase(ctx, db, flags.ImportPath)
+	return importDatabase(ctx, db, cfg.Import)
 }
 
-func importDatabase(ctx context.Context, db *database.DB, path string) error {
-	f, err := os.Open(path)
+func importDatabase(ctx context.Context, db *database.DB, cfg config.ImportConfig) error {
+	f, err := os.Open(cfg.Path)
 	if err != nil {
 		return err
 	}
