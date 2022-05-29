@@ -23,6 +23,8 @@ type Store struct {
 	currentTopic *hashmap.HashMap // map[int64]int64
 }
 
+const StartTopicID int64 = 1
+
 func InitStore(ctx context.Context, db *database.DB) (*Store, error) {
 	cache := &hashmap.HashMap{}
 	currentTopic := &hashmap.HashMap{}
@@ -53,7 +55,11 @@ func InitStore(ctx context.Context, db *database.DB) (*Store, error) {
 
 		topicID, dbErr := db.GetLastTopicID(ctx, u.ID)
 		if dbErr != nil {
-			return nil, dbErr
+			if errors.Is(dbErr, pgx.ErrNoRows) {
+				topicID = StartTopicID
+			} else {
+				return nil, dbErr
+			}
 		}
 
 		currentTopic.Set(u.ID, topicID)
@@ -99,14 +105,13 @@ func (s *Store) Get(id int64) *domain.User {
 	return usr
 }
 
-func (s *Store) Add(ctx context.Context, user *tele.User, activeUntil time.Time) (*domain.User, error) {
+func (s *Store) Add(ctx context.Context, user *tele.User) (*domain.User, error) {
 	userName := strings.Join([]string{user.FirstName, user.LastName}, " ")
 	req := &database.CreateUserParams{
-		ID:          user.ID,
-		Name:        userName,
-		Username:    user.Username,
-		State:       string(domain.UserStatusActive),
-		ActiveUntil: activeUntil,
+		ID:       user.ID,
+		Name:     userName,
+		Username: user.Username,
+		State:    string(domain.UserStatusActive),
 	}
 
 	dbUser, err := s.db.CreateUser(ctx, req)
@@ -119,9 +124,28 @@ func (s *Store) Add(ctx context.Context, user *tele.User, activeUntil time.Time)
 		Name:    dbUser.Username,
 		IsAdmin: dbUser.IsAdmin,
 	}
-	s.cache.Set(user.ID, usr)
+	s.cache.Set(usr.ID, usr)
+	s.currentTopic.Set(usr.ID, StartTopicID)
 
 	return usr, nil
+}
+
+func (s *Store) UpdateLicense(id int64, active time.Time) error {
+	err := s.db.SetActiveUser(s.globalCtx, &database.SetActiveUserParams{
+		ID:          id,
+		ActiveUntil: &active,
+	})
+	if err != nil {
+		return err
+	}
+
+	u, ok := s.cache.Get(id)
+	if ok {
+		user := u.(*database.User)
+		user.ActiveUntil = &active
+	}
+
+	return nil
 }
 
 func (s *Store) GetTopicID(userID int64) int64 {
@@ -135,4 +159,8 @@ func (s *Store) GetTopicID(userID int64) int64 {
 	}
 
 	return topicID
+}
+
+func (s *Store) SetTopicID(userID, topicID int64) {
+	s.currentTopic.Set(userID, topicID)
 }

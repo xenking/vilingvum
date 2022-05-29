@@ -11,6 +11,13 @@ import (
 	"github.com/jackc/pgtype"
 )
 
+type Dictionary struct {
+	ID      int64  `db:"id" json:"id"`
+	TopicID int64  `db:"topic_id" json:"topic_id"`
+	Word    string `db:"word" json:"word"`
+	Meaning string `db:"meaning" json:"meaning"`
+}
+
 type Topic struct {
 	ID          int64         `db:"id" json:"id"`
 	NextTopicID sql.NullInt64 `db:"next_topic_id" json:"next_topic_id"`
@@ -27,8 +34,7 @@ type User struct {
 	State       string       `db:"state" json:"state"`
 	IsAdmin     bool         `db:"is_admin" json:"is_admin"`
 	Settings    pgtype.JSONB `db:"settings" json:"settings"`
-	Dictionary  pgtype.JSONB `db:"dictionary" json:"dictionary"`
-	ActiveUntil time.Time    `db:"active_until" json:"active_until"`
+	ActiveUntil *time.Time   `db:"active_until" json:"active_until"`
 	CreatedAt   time.Time    `db:"created_at" json:"created_at"`
 }
 

@@ -1,7 +1,11 @@
 -- name: CreateUser :one
-INSERT INTO users (id, name, username, state, active_until)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING *;
+INSERT INTO users (id, name, username, state)
+VALUES ($1, $2, $3, $4) RETURNING *;
+
+-- name: SetActiveUser :exec
+UPDATE users
+SET active_until = $2
+WHERE id = $1;
 
 -- name: GetUser :one
 SELECT *
@@ -9,7 +13,12 @@ FROM users
 WHERE id = $1;
 
 -- name: ListActiveUsers :many
-SELECT id, name, settings, dictionary, is_admin
+SELECT id, name, settings, is_admin
+FROM users
+WHERE state = 'active';
+
+-- name: ListPaidUsers :many
+SELECT id, name, settings, is_admin
 FROM users
 WHERE active_until > now()
   AND state = 'active';

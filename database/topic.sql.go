@@ -30,23 +30,8 @@ func (q *Queries) CreateTopic(ctx context.Context, arg *CreateTopicParams) (int6
 	return id, err
 }
 
-const getLastTopicID = `-- name: GetLastTopicID :one
-SELECT topic_id
-FROM user_answers
-WHERE user_id = $1
-ORDER BY created_at DESC
-LIMIT 1
-`
-
-func (q *Queries) GetLastTopicID(ctx context.Context, userID int64) (int64, error) {
-	row := q.db.QueryRow(ctx, getLastTopicID, userID)
-	var topic_id int64
-	err := row.Scan(&topic_id)
-	return topic_id, err
-}
-
 const getPreviousTopics = `-- name: GetPreviousTopics :many
-SELECT t.id, t.content
+SELECT t.id, t.next_topic_id, t.type, t.content
 FROM topics t
          JOIN user_answers a ON t.id = a.topic_id
 WHERE a.user_id = $1
@@ -60,8 +45,10 @@ type GetPreviousTopicsParams struct {
 }
 
 type GetPreviousTopicsRow struct {
-	ID      int64        `db:"id" json:"id"`
-	Content pgtype.JSONB `db:"content" json:"content"`
+	ID          int64         `db:"id" json:"id"`
+	NextTopicID sql.NullInt64 `db:"next_topic_id" json:"next_topic_id"`
+	Type        string        `db:"type" json:"type"`
+	Content     pgtype.JSONB  `db:"content" json:"content"`
 }
 
 func (q *Queries) GetPreviousTopics(ctx context.Context, arg *GetPreviousTopicsParams) ([]*GetPreviousTopicsRow, error) {
@@ -73,7 +60,12 @@ func (q *Queries) GetPreviousTopics(ctx context.Context, arg *GetPreviousTopicsP
 	var items []*GetPreviousTopicsRow
 	for rows.Next() {
 		var i GetPreviousTopicsRow
-		if err := rows.Scan(&i.ID, &i.Content); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.NextTopicID,
+			&i.Type,
+			&i.Content,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, &i)
@@ -109,20 +101,18 @@ func (q *Queries) GetTopic(ctx context.Context, id int64) (*GetTopicRow, error) 
 	return &i, err
 }
 
-const insertUserAnswer = `-- name: InsertUserAnswer :exec
-INSERT INTO user_answers (user_id, topic_id, response)
-VALUES ($1, $2, $3)
-ON CONFLICT (user_id, topic_id) DO UPDATE SET response   = $3,
-                                              updated_at = NOW()
+const updateTopicRelation = `-- name: UpdateTopicRelation :exec
+UPDATE topics
+SET next_topic_id = $2
+WHERE id = $1
 `
 
-type InsertUserAnswerParams struct {
-	UserID   int64        `db:"user_id" json:"user_id"`
-	TopicID  int64        `db:"topic_id" json:"topic_id"`
-	Response pgtype.JSONB `db:"response" json:"response"`
+type UpdateTopicRelationParams struct {
+	ID          int64         `db:"id" json:"id"`
+	NextTopicID sql.NullInt64 `db:"next_topic_id" json:"next_topic_id"`
 }
 
-func (q *Queries) InsertUserAnswer(ctx context.Context, arg *InsertUserAnswerParams) error {
-	_, err := q.db.Exec(ctx, insertUserAnswer, arg.UserID, arg.TopicID, arg.Response)
+func (q *Queries) UpdateTopicRelation(ctx context.Context, arg *UpdateTopicRelationParams) error {
+	_, err := q.db.Exec(ctx, updateTopicRelation, arg.ID, arg.NextTopicID)
 	return err
 }

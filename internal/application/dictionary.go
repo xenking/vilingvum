@@ -4,6 +4,8 @@ import (
 	"context"
 
 	tele "gopkg.in/telebot.v3"
+
+	"github.com/xenking/vilingvum/internal/application/domain"
 )
 
 func (b *Bot) GetDict(ctx context.Context) tele.HandlerFunc {
@@ -13,8 +15,21 @@ func (b *Bot) GetDict(ctx context.Context) tele.HandlerFunc {
 			return c.Send("You are not registered")
 		}
 
-		_ = c.Send("Dictionary: ")
+		topicID := b.users.GetTopicID(user.ID)
 
-		return c.Send(user.Dictionary)
+		dd, dbErr := b.db.GetDictionary(ctx, topicID)
+		if dbErr != nil {
+			return c.Send(domain.NewError(dbErr))
+		}
+
+		dict := make(domain.Dictionary, len(dd))
+		for i, r := range dd {
+			dict[i] = domain.DictRecord{
+				Word:    r.Word,
+				Meaning: r.Meaning,
+			}
+		}
+
+		return c.Send(dict)
 	}
 }

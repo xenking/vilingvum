@@ -22,7 +22,8 @@ func main() {
 }
 
 var (
-	errNoCommand      = errors.New("no command provided (serve-bot, server-site, migrate, help)")
+	errNoCommand      = errors.New("no command provided (serve, migrate, import, help)")
+	errNoImportFile   = errors.New("no import file provided")
 	errUnimplemented  = errors.New("unimplemented")
 	errUnknownCommand = errors.New("unknown command")
 )
@@ -33,22 +34,38 @@ func runMain(ctx context.Context, args []string) error {
 	}
 
 	var flags cmdFlags
-	if err := loadFlags(&flags); err != nil {
+	if err := loadFlags(&flags, args[1:]); err != nil {
 		return err
 	}
 
-	switch cmd := args[0]; cmd {
-	case "serve-bot":
-		return serveBotCmd(ctx, flags)
-	case "serve-site":
-		return serveSiteCmd(ctx, flags)
+	cmd := args[0]
+	switch cmd {
+	case "serve":
+		if err := loadFlags(&flags, args[2:]); err != nil {
+			return err
+		}
+
+		switch subCmd := args[1]; subCmd {
+		case "bot":
+			return serveBotCmd(ctx, flags)
+		case "http":
+			return serveHTTPCmd(ctx, flags)
+		default:
+			return errors.Wrap(errUnknownCommand, cmd+": "+subCmd)
+		}
 	case "migrate":
 		return migrateCmd(ctx, flags)
+	case "import":
+		if len(args) < 3 || args[2] == "" {
+			return errNoImportFile
+		}
+
+		return importCmd(ctx, flags)
 	case "help":
 		panic(errUnimplemented)
-	default:
-		return errors.Wrap(errUnknownCommand, cmd)
 	}
+
+	return errors.Wrap(errUnknownCommand, cmd)
 }
 
 // appContext returns context that will be canceled on specific OS signals.
@@ -61,19 +78,19 @@ func appContext() (context.Context, context.CancelFunc) {
 }
 
 type cmdFlags struct {
-	Config string `flag:"cfg" default:"config.yml"`
+	Config     string `flag:"cfg" default:"config.yml"`
+	ImportPath string `flag:"file"`
 }
 
-var acfg = aconfig.Config{
-	SkipFiles:     true,
-	SkipEnv:       true,
-	SkipDefaults:  true,
-	FlagPrefix:    "",
-	FlagDelimiter: "-",
-	Args:          os.Args[2:], // Hack to not propagate os.Args to all commands
-}
-
-func loadFlags(cfg interface{}) error {
+func loadFlags(cfg interface{}, args []string) error {
+	acfg := aconfig.Config{
+		SkipFiles:     true,
+		SkipEnv:       true,
+		SkipDefaults:  true,
+		FlagPrefix:    "",
+		FlagDelimiter: "-",
+		Args:          args,
+	}
 	loader := aconfig.LoaderFor(cfg, acfg)
 
 	if err := loader.Load(); err != nil {

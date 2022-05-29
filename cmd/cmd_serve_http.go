@@ -14,7 +14,7 @@ import (
 	"github.com/xenking/vilingvum/pkg/logger"
 )
 
-func serveSiteCmd(ctx context.Context, flags cmdFlags) error {
+func serveHTTPCmd(ctx context.Context, flags cmdFlags) error {
 	cfg, err := config.NewConfig(flags.Config)
 	if err != nil {
 		return err
@@ -38,10 +38,10 @@ func serveSiteCmd(ctx context.Context, flags cmdFlags) error {
 		return err
 	}
 
-	return serveSite(ctx, cfg, db)
+	return serveHTTP(ctx, cfg, db)
 }
 
-func serveSite(ctx context.Context, cfg *config.Config, db *database.DB) error {
+func serveHTTP(ctx context.Context, cfg *config.Config, db *database.DB) error {
 	upg, listerErr := tableflip.New(tableflip.Options{
 		UpgradeTimeout: cfg.GracefulShutdownDelay,
 	})

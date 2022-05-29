@@ -25,7 +25,7 @@ type Bot struct {
 	db          *database.DB
 	users       *users.Store
 	actions     *hashmap.HashMap // map[int64]*domain.Action
-	retryTopics *hashmap.HashMap // map[int64][]*domain.Topic
+	retryTopics *hashmap.HashMap // map[int64]map[int64]*domain.Topic
 }
 
 func New(ctx context.Context, cfg config.BotConfig, db *database.DB) (*Bot, error) {

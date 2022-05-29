@@ -13,17 +13,15 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, name, username, state, active_until)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, name, username, state, is_admin, settings, dictionary, active_until, created_at
+INSERT INTO users (id, name, username, state)
+VALUES ($1, $2, $3, $4) RETURNING id, name, username, state, is_admin, settings, active_until, created_at
 `
 
 type CreateUserParams struct {
-	ID          int64     `db:"id" json:"id"`
-	Name        string    `db:"name" json:"name"`
-	Username    string    `db:"username" json:"username"`
-	State       string    `db:"state" json:"state"`
-	ActiveUntil time.Time `db:"active_until" json:"active_until"`
+	ID       int64  `db:"id" json:"id"`
+	Name     string `db:"name" json:"name"`
+	Username string `db:"username" json:"username"`
+	State    string `db:"state" json:"state"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User, error) {
@@ -32,7 +30,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User,
 		arg.Name,
 		arg.Username,
 		arg.State,
-		arg.ActiveUntil,
 	)
 	var i User
 	err := row.Scan(
@@ -42,7 +39,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User,
 		&i.State,
 		&i.IsAdmin,
 		&i.Settings,
-		&i.Dictionary,
 		&i.ActiveUntil,
 		&i.CreatedAt,
 	)
@@ -50,7 +46,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User,
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, name, username, state, is_admin, settings, dictionary, active_until, created_at
+SELECT id, name, username, state, is_admin, settings, active_until, created_at
 FROM users
 WHERE id = $1
 `
@@ -65,7 +61,6 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (*User, error) {
 		&i.State,
 		&i.IsAdmin,
 		&i.Settings,
-		&i.Dictionary,
 		&i.ActiveUntil,
 		&i.CreatedAt,
 	)
@@ -73,18 +68,16 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (*User, error) {
 }
 
 const listActiveUsers = `-- name: ListActiveUsers :many
-SELECT id, name, settings, dictionary, is_admin
+SELECT id, name, settings, is_admin
 FROM users
-WHERE active_until > now()
-  AND state = 'active'
+WHERE state = 'active'
 `
 
 type ListActiveUsersRow struct {
-	ID         int64        `db:"id" json:"id"`
-	Name       string       `db:"name" json:"name"`
-	Settings   pgtype.JSONB `db:"settings" json:"settings"`
-	Dictionary pgtype.JSONB `db:"dictionary" json:"dictionary"`
-	IsAdmin    bool         `db:"is_admin" json:"is_admin"`
+	ID       int64        `db:"id" json:"id"`
+	Name     string       `db:"name" json:"name"`
+	Settings pgtype.JSONB `db:"settings" json:"settings"`
+	IsAdmin  bool         `db:"is_admin" json:"is_admin"`
 }
 
 func (q *Queries) ListActiveUsers(ctx context.Context) ([]*ListActiveUsersRow, error) {
@@ -100,7 +93,6 @@ func (q *Queries) ListActiveUsers(ctx context.Context) ([]*ListActiveUsersRow, e
 			&i.ID,
 			&i.Name,
 			&i.Settings,
-			&i.Dictionary,
 			&i.IsAdmin,
 		); err != nil {
 			return nil, err
@@ -137,4 +129,59 @@ func (q *Queries) ListAdmins(ctx context.Context) ([]int64, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const listPaidUsers = `-- name: ListPaidUsers :many
+SELECT id, name, settings, is_admin
+FROM users
+WHERE active_until > now()
+  AND state = 'active'
+`
+
+type ListPaidUsersRow struct {
+	ID       int64        `db:"id" json:"id"`
+	Name     string       `db:"name" json:"name"`
+	Settings pgtype.JSONB `db:"settings" json:"settings"`
+	IsAdmin  bool         `db:"is_admin" json:"is_admin"`
+}
+
+func (q *Queries) ListPaidUsers(ctx context.Context) ([]*ListPaidUsersRow, error) {
+	rows, err := q.db.Query(ctx, listPaidUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListPaidUsersRow
+	for rows.Next() {
+		var i ListPaidUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Settings,
+			&i.IsAdmin,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setActiveUser = `-- name: SetActiveUser :exec
+UPDATE users
+SET active_until = $2
+WHERE id = $1
+`
+
+type SetActiveUserParams struct {
+	ID          int64      `db:"id" json:"id"`
+	ActiveUntil *time.Time `db:"active_until" json:"active_until"`
+}
+
+func (q *Queries) SetActiveUser(ctx context.Context, arg *SetActiveUserParams) error {
+	_, err := q.db.Exec(ctx, setActiveUser, arg.ID, arg.ActiveUntil)
+	return err
 }

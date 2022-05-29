@@ -8,8 +8,7 @@ CREATE TABLE IF NOT EXISTS users
     state        TEXT               NOT NULL,
     is_admin     BOOLEAN            NOT NULL DEFAULT false,
     settings     JSONB              NOT NULL DEFAULT '{}',
-    dictionary   JSONB              NOT NULL DEFAULT '{}',
-    active_until TIMESTAMP          NOT NULL,
+    active_until TIMESTAMP,
     created_at   TIMESTAMP          NOT NULL DEFAULT now()
 );
 
@@ -33,4 +32,12 @@ CREATE TABLE IF NOT EXISTS user_answers
     created_at TIMESTAMP NOT NULL DEFAULT now(),
     CONSTRAINT user_answers_pk
         PRIMARY KEY (user_id, topic_id)
+);
+
+CREATE TABLE IF NOT EXISTS dictionary
+(
+    id       BIGSERIAL PRIMARY KEY,
+    topic_id BIGSERIAL NOT NULL REFERENCES topics (id),
+    word     TEXT      NOT NULL,
+    meaning  TEXT      NOT NULL
 );
