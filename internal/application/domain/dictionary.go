@@ -34,6 +34,7 @@ func (dict Dictionary) Send(bot *tele.Bot, recipient tele.Recipient, options *te
 	}
 
 	options.ParseMode = tele.ModeMarkdownV2
+	options.Protected = true
 
 	return bot.Send(recipient, escape.Replace(sb.String()), options)
 }

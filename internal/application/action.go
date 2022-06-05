@@ -6,6 +6,7 @@ import (
 	tele "gopkg.in/telebot.v3"
 
 	"github.com/xenking/vilingvum/internal/application/domain"
+	"github.com/xenking/vilingvum/internal/application/menu"
 )
 
 func (b *Bot) OnAction(ctx context.Context) tele.HandlerFunc {
@@ -21,10 +22,51 @@ func (b *Bot) OnAction(ctx context.Context) tele.HandlerFunc {
 		}
 
 		switch action {
+		case domain.ActionFeedback:
+			if media := c.Message().Media(); media != nil {
+				return c.Send("Media not supported yet, use text instead")
+			}
+			b.actions.Del(user.ID)
+
+			for _, adminID := range b.forwardIDs {
+				if err := c.ForwardTo(adminID); err != nil {
+					return err
+				}
+			}
+
+			return c.Send("Thank you for your feedback!", menu.Main)
 		case domain.ActionTestReport:
-			return c.Send("Thank you. I will send your report to the teacher")
+			media := c.Message().Media()
+			if media == nil {
+				return c.Send("Please send a video or audio")
+			}
+
+			switch media.MediaType() {
+			case "video", "audio", "voice":
+				b.actions.Del(user.ID)
+
+				for _, adminID := range b.forwardIDs {
+					if err := c.ForwardTo(adminID); err != nil {
+						return err
+					}
+				}
+			}
+
+			b.users.NextTopicID(user.ID)
+
+			return c.Send("Thank you. I will resend your message to the teacher", menu.Main)
 		}
 
 		return nil
 	}
+}
+
+func (b *Bot) isAction(c tele.Context) bool {
+	_, ok := b.actions.Get(c.Sender().ID)
+
+	return ok
+}
+
+func (b *Bot) ResetAction(c tele.Context) {
+	b.actions.Del(c.Sender().ID)
 }

@@ -59,7 +59,25 @@ func importDatabase(ctx context.Context, db *database.DB, cfg config.ImportConfi
 	urls := make(map[string]struct{})
 
 	var prevTopicID int64 = -1
+	var prevTopicType domain.TopicType
 	for _, row := range rows {
+		topicType := domain.TopicTypeQuestion
+		if strings.HasPrefix(row.Video, "Progress test") {
+			topicType = domain.TopicTypeTest
+		}
+
+		if prevTopicType == domain.TopicTypeTest &&
+			topicType != domain.TopicTypeTest {
+			t := &domain.Topic{
+				Text: "Write a video or audio where you speak new words from your lessons",
+				Type: domain.TopicTypeTestReport,
+			}
+			prevTopicID, err = createTopic(ctx, db, t, prevTopicID)
+			if err != nil {
+				return err
+			}
+		}
+
 		for i, url := range row.VideoURLs {
 			if _, ok := urls[url]; ok {
 				continue
@@ -81,11 +99,6 @@ func importDatabase(ctx context.Context, db *database.DB, cfg config.ImportConfi
 			if err != nil {
 				return err
 			}
-		}
-
-		topicType := domain.TopicTypeQuestion
-		if strings.HasPrefix(row.Video, "Progress test") {
-			topicType = domain.TopicTypeTest
 		}
 
 		if row.Exercise1.Correct != "" {
@@ -168,6 +181,8 @@ func importDatabase(ctx context.Context, db *database.DB, cfg config.ImportConfi
 				return err
 			}
 		}
+
+		prevTopicType = topicType
 	}
 
 	return nil

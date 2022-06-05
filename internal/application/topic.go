@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"math/rand"
+	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/jackc/pgtype"
@@ -13,8 +14,12 @@ import (
 	"github.com/xenking/vilingvum/pkg/utils"
 )
 
+const DefaultDeleteDelay = 5 * time.Second
+
 func (b *Bot) HandleGetCurrentTopic(ctx context.Context) tele.HandlerFunc {
 	return func(c tele.Context) error {
+		b.ResetAction(c)
+
 		user := b.getUser(c)
 		if user == nil {
 			return c.Send("You are not registered")
@@ -27,7 +32,7 @@ func (b *Bot) HandleGetCurrentTopic(ctx context.Context) tele.HandlerFunc {
 
 		topic, err := b.loadTopic(ctx, currentTopicID)
 		if err != nil {
-			return c.Send(domain.NewError(err))
+			return err
 		}
 
 		return c.Send(b.prepareTopic(ctx, topic))
@@ -55,6 +60,7 @@ func (b *Bot) loadTopic(ctx context.Context, topicID int64) (*domain.Topic, erro
 
 func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic) (*domain.Topic, *tele.ReplyMarkup) {
 	topic.Raw.Reset()
+
 	switch topic.Type {
 	case domain.TopicTypeVideo:
 		topic.Raw.WriteString("Next topic *")
@@ -66,6 +72,8 @@ func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic) (*domain.To
 		topic.Raw.WriteString(":\n*")
 		topic.Raw.WriteString(topic.Question)
 		topic.Raw.WriteByte('*')
+	default:
+		topic.Raw.WriteString(topic.Text)
 	}
 
 	replyAnswers := &tele.ReplyMarkup{
@@ -98,21 +106,21 @@ func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic) (*domain.To
 	var rows []tele.Row
 
 	var sumLen, lastSplit, num int
-	for i, answer := range answers {
+	for i := range answers {
 		num++
-		sumLen += len(answer.Text)
+		sumLen += len(answers[i].Text)
 		switch {
-		case len(answer.Text) >= 30:
+		case len(answers[i].Text) >= 30:
 			if lastSplit < i {
 				rows = append(rows, answers[lastSplit:i])
 			}
-			rows = append(rows, tele.Row{answer})
+			rows = append(rows, tele.Row{answers[i]})
 			sumLen = 0
 			lastSplit = i + 1
 			num = 0
 		case (num == 2 && sumLen > 37) || (num == 3 && sumLen > 47) || num >= 4:
 			rows = append(rows, answers[lastSplit:i])
-			sumLen = len(answer.Text)
+			sumLen = len(answers[i].Text)
 			lastSplit = i
 			num = 1
 		}
@@ -140,7 +148,7 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 			Answer:    answer,
 		})
 		if err != nil {
-			return c.Send(domain.NewError(err))
+			return err
 		}
 
 		err = b.db.InsertUserAnswer(ctx, &database.InsertUserAnswerParams{
@@ -152,7 +160,7 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 			},
 		})
 		if err != nil {
-			return c.Send(domain.NewError(err))
+			return err
 		}
 
 		if !answer.Correct {
@@ -165,6 +173,36 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 			}
 		}
 
+		for i, buttons := range menu.InlineKeyboard {
+			for j, btn := range buttons {
+				if btn.Text != answer.Text {
+					continue
+				}
+
+				if !answer.Correct {
+					btn.Text = "❌ " + btn.Text
+					err = c.Respond(&tele.CallbackResponse{
+						Text: "You answered incorrectly",
+					})
+				} else {
+					btn.Text = "✅ " + btn.Text
+					err = c.Respond(&tele.CallbackResponse{
+						Text: "You answered correctly",
+					})
+				}
+				if err != nil {
+					return err
+				}
+
+				menu.InlineKeyboard[i][j] = btn
+			}
+		}
+
+		err = c.Edit(menu)
+		if err != nil {
+			return err
+		}
+
 		nextTopic, err := b.loadTopic(ctx, topic.NextTopicID)
 		if err != nil {
 			return err
@@ -172,9 +210,12 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 
 		b.users.SetTopicID(user.ID, nextTopic.ID)
 
-		if nextTopic.Type != domain.TopicTypeQuestion {
+		switch nextTopic.Type {
+		case domain.TopicTypeVideo, domain.TopicTypeTestReport:
 			rt, exists := b.retryTopics.Get(user.ID)
-			if retryTopics, ok := rt.(map[int64]*domain.Topic); exists && ok && len(retryTopics) > 0 {
+
+			retryTopics, ok := rt.(map[int64]*domain.Topic)
+			if exists && ok && len(retryTopics) > 0 {
 				for key, retryTopic := range retryTopics {
 					nextTopic = retryTopic
 					retryTopic.NextTopicID = topic.NextTopicID
@@ -185,12 +226,13 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 			}
 		}
 
-		err = c.Send(b.prepareTopic(ctx, nextTopic))
-		if err != nil {
-			return c.Send(domain.NewError(err))
+		if nextTopic.Type == domain.TopicTypeTestReport {
+			b.actions.Set(user.ID, domain.ActionTestReport)
 		}
 
-		return c.Delete()
+		c.DeleteAfter(DefaultDeleteDelay)
+
+		return c.Send(b.prepareTopic(ctx, nextTopic))
 	}
 }
 
@@ -206,7 +248,7 @@ func (b *Bot) HandleCallbackNextTopic(ctx context.Context, topic *domain.Topic) 
 			Text:      topic.Text,
 		})
 		if err != nil {
-			return c.Send(domain.NewError(err))
+			return err
 		}
 
 		err = b.db.InsertUserAnswer(ctx, &database.InsertUserAnswerParams{
@@ -218,7 +260,7 @@ func (b *Bot) HandleCallbackNextTopic(ctx context.Context, topic *domain.Topic) 
 			},
 		})
 		if err != nil {
-			return c.Send(domain.NewError(err))
+			return err
 		}
 
 		nextTopic, err := b.loadTopic(ctx, topic.NextTopicID)
@@ -234,6 +276,8 @@ func (b *Bot) HandleCallbackNextTopic(ctx context.Context, topic *domain.Topic) 
 
 func (b *Bot) HandleGetPrevTopics(ctx context.Context) tele.HandlerFunc {
 	return func(c tele.Context) error {
+		b.ResetAction(c)
+
 		user := b.getUser(c)
 		if user == nil {
 			return c.Send("You are not registered")
@@ -244,7 +288,7 @@ func (b *Bot) HandleGetPrevTopics(ctx context.Context) tele.HandlerFunc {
 			Type:   string(domain.TopicTypeVideo),
 		})
 		if err != nil {
-			return c.Send(domain.NewError(err))
+			return err
 		}
 
 		if len(tt) == 0 {
@@ -275,65 +319,3 @@ func (b *Bot) HandleGetPrevTopics(ctx context.Context) tele.HandlerFunc {
 		return c.Send(topics)
 	}
 }
-
-//
-//func (b *Bot) onReadPost(ctx context.Context, menu *tele.ReplyMarkup) tele.HandlerFunc {
-//	return func(c tele.Context) error {
-//		fields := strings.Split(c.Data(), "|")
-//		if len(fields) == 0 {
-//			return nil
-//		}
-//
-//		postID, err := utils.ParseUint(fields[len(fields)-1])
-//		if err != nil {
-//			return c.Send(Error{Err: err})
-//		}
-//
-//		err = b.db.UpdatePostEntry(ctx, &database.UpdatePostEntryParams{
-//			PostID: postID,
-//			UserID: c.Sender().ID,
-//			Status: PostEntryRead,
-//		})
-//		if err != nil {
-//			return c.Send(Error{Err: err})
-//		}
-//
-//		menu.InlineKeyboard[0][0].Text = "❤️ Read"
-//
-//		return c.Edit(menu)
-//	}
-//}
-//
-//func (b *Bot) onNextPost(ctx context.Context, menu *tele.ReplyMarkup) tele.HandlerFunc {
-//	return func(c tele.Context) error {
-//		fields := strings.Split(c.Data(), "|")
-//		if len(fields) == 0 {
-//			return nil
-//		}
-//
-//		postID, err := utils.ParseUint(fields[len(fields)-1])
-//		if err != nil {
-//			return c.Send(Error{Err: err})
-//		}
-//
-//		user, err := b.getUser(ctx, c.Sender().ID)
-//		if err != nil {
-//			return c.Send(Error{Err: err})
-//		}
-//
-//		post, err := b.db.GetNextPost(ctx, postID)
-//		if err != nil {
-//			if errors.Is(err, pgx.ErrNoRows) {
-//				user.LastPostID = post.ID
-//
-//				return c.Send("No more posts")
-//			}
-//
-//			return c.Send(Error{Err: err})
-//		}
-//
-//		user.LastPostID = post.ID
-//
-//		return b.sendPost(ctx, c, post.ID, post.Content.Bytes)
-//	}
-//}

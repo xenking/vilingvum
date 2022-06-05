@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/xenking/vilingvum/pkg/utils"
+)
 
 type User struct {
 	Name        string
@@ -23,4 +27,10 @@ type UserAnswer struct {
 	TopicType TopicType   `json:"topic_type"`
 	Text      string      `json:"text"`
 	Answer    interface{} `json:"answer,omitempty"`
+}
+
+type ForwardID int64
+
+func (id ForwardID) Recipient() string {
+	return utils.WriteUint(int64(id))
 }

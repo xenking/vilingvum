@@ -11,9 +11,10 @@ import (
 type TopicType string
 
 const (
-	TopicTypeVideo    TopicType = "video"
-	TopicTypeQuestion TopicType = "question"
-	TopicTypeTest     TopicType = "test"
+	TopicTypeVideo      TopicType = "video"
+	TopicTypeQuestion   TopicType = "question"
+	TopicTypeTest       TopicType = "test"
+	TopicTypeTestReport TopicType = "report"
 )
 
 type Topic struct {
@@ -38,6 +39,7 @@ var escape = strings.NewReplacer(".", `\.`, "#", `\#`, "=", `\=`, "+", `\+`, `-`
 
 func (t *Topic) Send(bot *tele.Bot, recipient tele.Recipient, options *tele.SendOptions) (*tele.Message, error) {
 	options.ParseMode = tele.ModeMarkdownV2
+	options.Protected = true
 
 	return bot.Send(recipient, escape.Replace(t.Raw.String()), options)
 }
@@ -46,6 +48,7 @@ type Topics []*Topic
 
 func (tt Topics) Send(bot *tele.Bot, recipient tele.Recipient, options *tele.SendOptions) (*tele.Message, error) {
 	options.ParseMode = tele.ModeMarkdownV2
+	options.Protected = true
 
 	var sb strings.Builder
 

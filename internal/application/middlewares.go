@@ -25,6 +25,7 @@ func LoggerMiddleware(l *log.Logger) tele.MiddlewareFunc {
 		return func(c tele.Context) error {
 			data, _ := json.Marshal(c.Update())
 			l.Debug().RawJSON("data", data).Msg("update")
+
 			return next(c)
 		}
 	}

@@ -10,6 +10,8 @@ import (
 
 func (b *Bot) GetDict(ctx context.Context) tele.HandlerFunc {
 	return func(c tele.Context) error {
+		b.ResetAction(c)
+
 		user := b.users.Get(c.Sender().ID)
 		if user == nil {
 			return c.Send("You are not registered")
@@ -19,7 +21,7 @@ func (b *Bot) GetDict(ctx context.Context) tele.HandlerFunc {
 
 		dd, dbErr := b.db.GetDictionary(ctx, topicID)
 		if dbErr != nil {
-			return c.Send(domain.NewError(dbErr))
+			return dbErr
 		}
 
 		dict := make(domain.Dictionary, len(dd))

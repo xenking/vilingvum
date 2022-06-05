@@ -25,14 +25,16 @@ CREATE TABLE IF NOT EXISTS topics
 
 CREATE TABLE IF NOT EXISTS user_answers
 (
+    id         BIGSERIAL PRIMARY KEY,
     user_id    BIGINT    NOT NULL REFERENCES users (id),
     topic_id   BIGSERIAL NOT NULL REFERENCES topics (id),
     response   JSONB     NOT NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT now(),
-    created_at TIMESTAMP NOT NULL DEFAULT now(),
-    CONSTRAINT user_answers_pk
-        PRIMARY KEY (user_id, topic_id)
+    created_at TIMESTAMP NOT NULL DEFAULT now()
 );
+
+CREATE INDEX IF NOT EXISTS user_answers_idx ON user_answers (user_id, topic_id);
+CREATE INDEX IF NOT EXISTS user_answers_users ON user_answers (user_id);
 
 CREATE TABLE IF NOT EXISTS dictionary
 (

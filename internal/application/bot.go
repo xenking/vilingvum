@@ -10,6 +10,7 @@ import (
 
 	"github.com/xenking/vilingvum/config"
 	"github.com/xenking/vilingvum/database"
+	"github.com/xenking/vilingvum/internal/application/domain"
 	"github.com/xenking/vilingvum/internal/application/menu"
 	"github.com/xenking/vilingvum/internal/application/users"
 	"github.com/xenking/vilingvum/pkg/logger"
@@ -22,6 +23,7 @@ const (
 
 type Bot struct {
 	*tele.Bot
+	forwardIDs  []domain.ForwardID
 	db          *database.DB
 	users       *users.Store
 	actions     *hashmap.HashMap // map[int64]*domain.Action
@@ -62,6 +64,10 @@ func (b *Bot) RegisterHandlers(ctx context.Context) (*Bot, error) {
 
 	b.Handle("/start", b.HandleStart(ctx))
 	b.Handle(tele.OnText, b.OnAction(ctx))
+	b.Handle(tele.OnVideo, b.OnAction(ctx))
+	b.Handle(tele.OnAudio, b.OnAction(ctx))
+	b.Handle(tele.OnVoice, b.OnAction(ctx))
+	b.OnError = b.HandleError(ctx)
 
 	usersGroup := b.Group()
 	usersGroup.Use(IsUserMiddleware(b.users))
@@ -71,6 +77,11 @@ func (b *Bot) RegisterHandlers(ctx context.Context) (*Bot, error) {
 	adminIDs, err := b.db.ListAdmins(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	b.forwardIDs = make([]domain.ForwardID, len(adminIDs))
+	for i, id := range adminIDs {
+		b.forwardIDs[i] = domain.ForwardID(id)
 	}
 
 	admin := b.Group()

@@ -135,8 +135,7 @@ func (s *Store) UpdateLicense(id int64, active time.Time) error {
 	}
 
 	u, ok := s.cache.Get(id)
-	if ok {
-		user := u.(*domain.User)
+	if user, ok2 := u.(*domain.User); ok && ok2 {
 		user.ActiveUntil = &active
 	}
 
@@ -157,5 +156,11 @@ func (s *Store) GetTopicID(userID int64) int64 {
 }
 
 func (s *Store) SetTopicID(userID, topicID int64) {
+	s.currentTopic.Set(userID, topicID)
+}
+
+func (s *Store) NextTopicID(userID int64) {
+	topicID := s.GetTopicID(userID) + 1
+
 	s.currentTopic.Set(userID, topicID)
 }
