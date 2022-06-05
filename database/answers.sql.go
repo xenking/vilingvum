@@ -13,7 +13,7 @@ const getLastTopicID = `-- name: GetLastTopicID :one
 SELECT topic_id
 FROM user_answers
 WHERE user_id = $1
-ORDER BY id DESC
+ORDER BY topic_id DESC
 LIMIT 1
 `
 
