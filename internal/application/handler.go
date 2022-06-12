@@ -16,30 +16,35 @@ func (b *Bot) HandleStart(ctx context.Context) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		b.ResetAction(c)
 
+		reply := menu.Guest
 		user := b.users.Get(c.Sender().ID)
 
-		payload := c.Message().Payload
-		if user != nil && payload == "" {
-			return c.Send(fmt.Sprintf("Hey %s!", user.Name), menu.Main)
-		} else if user == nil {
+		if user == nil {
 			var err error
 			user, err = b.users.Add(ctx, c.Sender())
 			if err != nil {
 				return err
 			}
+
+			return c.Send("Hello there! I'm a bot", reply)
 		}
 
-		if payload != "" {
-			active := time.Now().AddDate(0, 1, 0)
-			err := b.users.UpdateLicense(user.ID, active)
-			if err != nil {
-				return err
-			}
-
-			return c.Send("Your license has been activated", menu.Main)
+		if b.validSubscription(user) {
+			reply = menu.Main
 		}
 
-		return c.Send("Hello there! I'm a bot", menu.Main)
+		// TODO: invite system?
+		//if c.Message().Payload != "" {
+		//	active := time.Now().AddDate(0, 1, 0)
+		//	err := b.users.UpdateLicense(user.ID, active)
+		//	if err != nil {
+		//		return err
+		//	}
+		//
+		//	return c.Send("Your license has been activated", menu.Main)
+		//}
+
+		return c.Send(fmt.Sprintf("Hey %s!", user.Name), reply)
 	}
 }
 
@@ -74,4 +79,16 @@ func (b *Bot) HandleError(ctx context.Context) func(error, tele.Context) {
 
 func (b *Bot) getUser(c tele.Context) *domain.User {
 	return b.users.Get(c.Sender().ID)
+}
+
+func (b *Bot) validSubscription(user *domain.User) bool {
+	if user == nil {
+		return false
+	}
+
+	if user.ActiveUntil == nil {
+		return false
+	}
+
+	return user.ActiveUntil.After(time.Now())
 }

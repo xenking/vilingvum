@@ -53,7 +53,8 @@ type ServerCacheConfig struct {
 }
 
 type BotConfig struct {
-	Token string
+	Token        string
+	PaymentToken string
 }
 
 type PostgresConfig struct {

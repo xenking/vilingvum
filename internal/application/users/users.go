@@ -23,8 +23,6 @@ type Store struct {
 	currentTopic *hashmap.HashMap // map[int64]int64
 }
 
-const StartTopicID int64 = 1
-
 func InitStore(ctx context.Context, db *database.DB) (*Store, error) {
 	cache := &hashmap.HashMap{}
 	currentTopic := &hashmap.HashMap{}
@@ -51,7 +49,7 @@ func InitStore(ctx context.Context, db *database.DB) (*Store, error) {
 		topicID, dbErr := db.GetLastTopicID(ctx, u.ID)
 		if dbErr != nil {
 			if errors.Is(dbErr, pgx.ErrNoRows) {
-				topicID = StartTopicID
+				topicID = domain.StartTopicID
 			} else {
 				return nil, dbErr
 			}
@@ -120,16 +118,27 @@ func (s *Store) Add(ctx context.Context, user *tele.User) (*domain.User, error) 
 		IsAdmin: dbUser.IsAdmin,
 	}
 	s.cache.Set(usr.ID, usr)
-	s.currentTopic.Set(usr.ID, StartTopicID)
+	s.currentTopic.Set(usr.ID, domain.StartTopicID)
 
 	return usr, nil
 }
 
-func (s *Store) UpdateLicense(id int64, active time.Time) error {
-	err := s.db.SetActiveUser(s.globalCtx, &database.SetActiveUserParams{
+func (s *Store) UpdateLicense(ctx context.Context, id int64, email, phoneNumber string) error {
+	active := time.Now().Add(domain.UserSubscriptionDuration)
+	args := &database.UpdateUserSubscriptionParams{
 		ID:          id,
 		ActiveUntil: &active,
-	})
+	}
+
+	if email != "" {
+		args.Email = &email
+	}
+
+	if phoneNumber != "" {
+		args.PhoneNumber = &phoneNumber
+	}
+
+	err := s.db.UpdateUserSubscription(ctx, args)
 	if err != nil {
 		return err
 	}

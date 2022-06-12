@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgtype"
 )
 
@@ -14,6 +15,16 @@ type Dictionary struct {
 	TopicID int64  `db:"topic_id" json:"topic_id"`
 	Word    string `db:"word" json:"word"`
 	Meaning string `db:"meaning" json:"meaning"`
+}
+
+type Invoice struct {
+	Uuid      uuid.UUID    `db:"uuid" json:"uuid"`
+	UserID    int64        `db:"user_id" json:"user_id"`
+	Payload   pgtype.JSONB `db:"payload" json:"payload"`
+	Email     *string      `db:"email" json:"email"`
+	ChargeID  *string      `db:"charge_id" json:"charge_id"`
+	UpdatedAt time.Time    `db:"updated_at" json:"updated_at"`
+	CreatedAt time.Time    `db:"created_at" json:"created_at"`
 }
 
 type Topic struct {
@@ -29,6 +40,8 @@ type User struct {
 	ID          int64        `db:"id" json:"id"`
 	Name        string       `db:"name" json:"name"`
 	Username    string       `db:"username" json:"username"`
+	Email       *string      `db:"email" json:"email"`
+	PhoneNumber *string      `db:"phone_number" json:"phone_number"`
 	State       string       `db:"state" json:"state"`
 	IsAdmin     bool         `db:"is_admin" json:"is_admin"`
 	Settings    pgtype.JSONB `db:"settings" json:"settings"`

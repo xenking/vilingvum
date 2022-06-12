@@ -1,10 +1,13 @@
 -- name: CreateUser :one
 INSERT INTO users (id, name, username, state)
-VALUES ($1, $2, $3, $4) RETURNING *;
+VALUES ($1, $2, $3, $4)
+RETURNING *;
 
--- name: SetActiveUser :exec
+-- name: UpdateUserSubscription :exec
 UPDATE users
-SET active_until = $2
+SET email        = $2,
+    phone_number = $3,
+    active_until = $4
 WHERE id = $1;
 
 -- name: GetUser :one

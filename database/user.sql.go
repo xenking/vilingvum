@@ -12,7 +12,8 @@ import (
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, name, username, state)
-VALUES ($1, $2, $3, $4) RETURNING id, name, username, state, is_admin, settings, active_until, created_at
+VALUES ($1, $2, $3, $4)
+RETURNING id, name, username, email, phone_number, state, is_admin, settings, active_until, created_at
 `
 
 type CreateUserParams struct {
@@ -34,6 +35,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User,
 		&i.ID,
 		&i.Name,
 		&i.Username,
+		&i.Email,
+		&i.PhoneNumber,
 		&i.State,
 		&i.IsAdmin,
 		&i.Settings,
@@ -44,7 +47,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User,
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, name, username, state, is_admin, settings, active_until, created_at
+SELECT id, name, username, email, phone_number, state, is_admin, settings, active_until, created_at
 FROM users
 WHERE id = $1
 `
@@ -56,6 +59,8 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (*User, error) {
 		&i.ID,
 		&i.Name,
 		&i.Username,
+		&i.Email,
+		&i.PhoneNumber,
 		&i.State,
 		&i.IsAdmin,
 		&i.Settings,
@@ -172,18 +177,27 @@ func (q *Queries) ListPaidUsers(ctx context.Context) ([]*ListPaidUsersRow, error
 	return items, nil
 }
 
-const setActiveUser = `-- name: SetActiveUser :exec
+const updateUserSubscription = `-- name: UpdateUserSubscription :exec
 UPDATE users
-SET active_until = $2
+SET email        = $2,
+    phone_number = $3,
+    active_until = $4
 WHERE id = $1
 `
 
-type SetActiveUserParams struct {
+type UpdateUserSubscriptionParams struct {
 	ID          int64      `db:"id" json:"id"`
+	Email       *string    `db:"email" json:"email"`
+	PhoneNumber *string    `db:"phone_number" json:"phone_number"`
 	ActiveUntil *time.Time `db:"active_until" json:"active_until"`
 }
 
-func (q *Queries) SetActiveUser(ctx context.Context, arg *SetActiveUserParams) error {
-	_, err := q.db.Exec(ctx, setActiveUser, arg.ID, arg.ActiveUntil)
+func (q *Queries) UpdateUserSubscription(ctx context.Context, arg *UpdateUserSubscriptionParams) error {
+	_, err := q.db.Exec(ctx, updateUserSubscription,
+		arg.ID,
+		arg.Email,
+		arg.PhoneNumber,
+		arg.ActiveUntil,
+	)
 	return err
 }

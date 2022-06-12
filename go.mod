@@ -12,6 +12,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.33.0
 	github.com/gofiber/template v1.6.27
 	github.com/golang-migrate/migrate/v4 v4.15.2
+	github.com/google/uuid v1.3.0
 	github.com/jackc/pgconn v1.12.0
 	github.com/jackc/pgtype v1.11.0
 	github.com/jackc/pgx/v4 v4.16.0

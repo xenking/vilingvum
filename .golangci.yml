@@ -5,7 +5,7 @@ linters-settings:
     lines: 100
     statements: 50
   gci:
-    local-prefixes: github.com/xenking/crypto-bot
+    local-prefixes: github.com/xenking/vilingvum
   goconst:
     min-len: 2
     min-occurrences: 2

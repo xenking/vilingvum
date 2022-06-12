@@ -23,11 +23,12 @@ const (
 
 type Bot struct {
 	*tele.Bot
-	forwardIDs  []domain.ForwardID
-	db          *database.DB
-	users       *users.Store
-	actions     *hashmap.HashMap // map[int64]*domain.Action
-	retryTopics *hashmap.HashMap // map[int64]map[int64]*domain.Topic
+	PaymentToken string
+	forwardIDs   []domain.ForwardID
+	db           *database.DB
+	users        *users.Store
+	actions      *hashmap.HashMap // map[int64]*domain.Action
+	retryTopics  *hashmap.HashMap // map[int64]map[int64]*domain.Topic
 }
 
 func New(ctx context.Context, cfg config.BotConfig, db *database.DB) (*Bot, error) {
@@ -47,11 +48,12 @@ func New(ctx context.Context, cfg config.BotConfig, db *database.DB) (*Bot, erro
 	}
 
 	bot := &Bot{
-		Bot:         client,
-		db:          db,
-		users:       store,
-		actions:     &hashmap.HashMap{},
-		retryTopics: &hashmap.HashMap{},
+		PaymentToken: cfg.PaymentToken,
+		Bot:          client,
+		db:           db,
+		users:        store,
+		actions:      &hashmap.HashMap{},
+		retryTopics:  &hashmap.HashMap{},
 	}
 
 	return bot.RegisterHandlers(ctx)
@@ -67,6 +69,8 @@ func (b *Bot) RegisterHandlers(ctx context.Context) (*Bot, error) {
 	b.Handle(tele.OnVideo, b.OnAction(ctx))
 	b.Handle(tele.OnAudio, b.OnAction(ctx))
 	b.Handle(tele.OnVoice, b.OnAction(ctx))
+	b.Handle(tele.OnCheckout, b.OnCheckout(ctx))
+	b.Handle(tele.OnPayment, b.OnPaymentSuccess(ctx))
 	b.OnError = b.HandleError(ctx)
 
 	usersGroup := b.Group()
@@ -92,12 +96,14 @@ func (b *Bot) RegisterHandlers(ctx context.Context) (*Bot, error) {
 
 func (b *Bot) InitMenus(ctx context.Context) {
 	menu.Main = &tele.ReplyMarkup{ResizeKeyboard: true}
+	menu.Guest = &tele.ReplyMarkup{ResizeKeyboard: true}
 
 	btnCurrentTopic := menu.Main.Text("🎓 Current topic")
 	btnDict := menu.Main.Text("📔 Dictionary")
 	btnPrevTopics := menu.Main.Text("🔄 Previous topics")
 	btnAbout := menu.Main.Text("ℹ About me")
 	btnFeedback := menu.Main.Text("📝 Feedback")
+	btnSubscribe := menu.Main.Text("💳 Subscribe")
 
 	menu.Main.Reply(
 		menu.Main.Row(btnCurrentTopic),
@@ -105,11 +111,18 @@ func (b *Bot) InitMenus(ctx context.Context) {
 		menu.Main.Row(btnAbout, btnFeedback),
 	)
 
+	menu.Guest.Reply(
+		menu.Main.Row(btnCurrentTopic),
+		menu.Main.Row(btnDict, btnPrevTopics),
+		menu.Main.Row(btnAbout, btnSubscribe),
+	)
+
 	b.Handle(&btnCurrentTopic, b.HandleGetCurrentTopic(ctx))
 	b.Handle(&btnDict, b.GetDict(ctx))
 	b.Handle(&btnPrevTopics, b.HandleGetPrevTopics(ctx))
 	b.Handle(&btnAbout, b.HandleAbout(ctx))
 	b.Handle(&btnFeedback, b.HandleFeedback(ctx))
+	b.Handle(&btnSubscribe, b.HandleSubscribe(ctx))
 
 	menu.Admin = &tele.ReplyMarkup{ResizeKeyboard: true}
 	btnUsers := menu.Admin.Text("🔎 Users")

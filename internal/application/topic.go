@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"math/rand"
-	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/jackc/pgtype"
@@ -13,8 +12,6 @@ import (
 	"github.com/xenking/vilingvum/internal/application/domain"
 	"github.com/xenking/vilingvum/pkg/utils"
 )
-
-const DefaultDeleteDelay = 5 * time.Second
 
 func (b *Bot) HandleGetCurrentTopic(ctx context.Context) tele.HandlerFunc {
 	return func(c tele.Context) error {
@@ -28,6 +25,10 @@ func (b *Bot) HandleGetCurrentTopic(ctx context.Context) tele.HandlerFunc {
 		currentTopicID := b.users.GetTopicID(user.ID)
 		if currentTopicID < 0 {
 			return c.Send("No current topic")
+		}
+
+		if !b.validSubscription(user) && currentTopicID >= domain.DemoTopicID-1 {
+			return c.Send("All topics are available for subscription")
 		}
 
 		topic, err := b.loadTopic(ctx, currentTopicID)
@@ -230,7 +231,11 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 			b.actions.Set(user.ID, domain.ActionTestReport)
 		}
 
-		c.DeleteAfter(DefaultDeleteDelay)
+		c.DeleteAfter(domain.TopicDeleteDelay)
+
+		if !b.validSubscription(user) && topic.NextTopicID >= domain.DemoTopicID {
+			return c.Send("All topics are available for subscription")
+		}
 
 		return c.Send(b.prepareTopic(ctx, nextTopic))
 	}
@@ -261,6 +266,10 @@ func (b *Bot) HandleCallbackNextTopic(ctx context.Context, topic *domain.Topic) 
 		})
 		if err != nil {
 			return err
+		}
+
+		if !b.validSubscription(user) && topic.NextTopicID >= domain.DemoTopicID {
+			return c.Send("All topics are available for subscription")
 		}
 
 		nextTopic, err := b.loadTopic(ctx, topic.NextTopicID)

@@ -1,10 +1,14 @@
 CREATE SCHEMA IF NOT EXISTS public;
 
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE TABLE IF NOT EXISTS users
 (
     id           BIGINT PRIMARY KEY NOT NULL,
     name         TEXT               NOT NULL,
     username     TEXT               NOT NULL,
+    email        TEXT,
+    phone_number TEXT,
     state        TEXT               NOT NULL,
     is_admin     BOOLEAN            NOT NULL DEFAULT false,
     settings     JSONB              NOT NULL DEFAULT '{}',
@@ -42,4 +46,15 @@ CREATE TABLE IF NOT EXISTS dictionary
     topic_id BIGSERIAL NOT NULL REFERENCES topics (id),
     word     TEXT      NOT NULL,
     meaning  TEXT      NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS invoices
+(
+    uuid       UUID PRIMARY KEY,
+    user_id    BIGINT    NOT NULL REFERENCES users (id),
+    payload    JSONB     NOT NULL,
+    email      TEXT,
+    charge_id  TEXT,
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
+    created_at TIMESTAMP NOT NULL DEFAULT now()
 );
