@@ -103,6 +103,8 @@ func (b *Bot) OnCheckout(ctx context.Context) tele.HandlerFunc {
 			return c.Send(fmt.Sprintf("Hey %s!", user.Name), menu.Main)
 		}
 
+		defer c.DeleteAfter(domain.PaymentDeleteDelay)
+
 		query := c.PreCheckoutQuery()
 		invoiceUUID, err := uuid.Parse(query.Payload)
 		if err != nil {

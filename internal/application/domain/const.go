@@ -10,4 +10,5 @@ const (
 const (
 	UserSubscriptionDuration = 180 * 24 * time.Hour
 	TopicDeleteDelay         = 5 * time.Second
+	PaymentDeleteDelay       = 15 * time.Second
 )
