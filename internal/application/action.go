@@ -29,7 +29,15 @@ func (b *Bot) OnAction(ctx context.Context) tele.HandlerFunc {
 			b.actions.Del(user.ID)
 
 			for _, adminID := range b.forwardIDs {
-				if err := c.ForwardTo(adminID); err != nil {
+				_, err := b.Send(adminID, &domain.FeedbackMsg{
+					UserID: user.ID,
+				})
+				if err != nil {
+					return err
+				}
+
+				err = c.ForwardTo(adminID)
+				if err != nil {
 					return err
 				}
 			}
@@ -59,12 +67,6 @@ func (b *Bot) OnAction(ctx context.Context) tele.HandlerFunc {
 
 		return nil
 	}
-}
-
-func (b *Bot) isAction(c tele.Context) bool {
-	_, ok := b.actions.Get(c.Sender().ID)
-
-	return ok
 }
 
 func (b *Bot) ResetAction(c tele.Context) {

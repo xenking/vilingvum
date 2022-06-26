@@ -8,15 +8,14 @@ UPDATE topics
 SET next_topic_id = $2
 WHERE id = $1;
 
--- name: GetTopic :one
+-- name: GetTopics :many
 SELECT id, next_topic_id, type, content
 FROM topics
-WHERE id = $1;
+ORDER BY id;
 
--- name: GetPreviousTopics :many
-SELECT t.id, t.next_topic_id, t.type, t.content
-FROM topics t
-         JOIN user_answers a ON t.id = a.topic_id
-WHERE a.user_id = $1
-  AND t.type = $2
-ORDER BY t.id DESC;
+-- name: GetLatestTopicID :one
+SELECT topic_id
+FROM user_answers
+WHERE user_id = $1
+ORDER BY topic_id DESC
+LIMIT 1;

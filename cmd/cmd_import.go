@@ -69,7 +69,7 @@ func importDatabase(ctx context.Context, db *database.DB, cfg config.ImportConfi
 		if prevTopicType == domain.TopicTypeTest &&
 			topicType != domain.TopicTypeTest {
 			t := &domain.Topic{
-				Text: "Write a video or audio where you speak new words from your lessons",
+				Text: "Please, send your video or audio feedback. Use the new vocabulary from the previous topic",
 				Type: domain.TopicTypeTestReport,
 			}
 			prevTopicID, err = createTopic(ctx, db, t, prevTopicID)

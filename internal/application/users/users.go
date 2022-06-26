@@ -7,7 +7,6 @@ import (
 
 	"github.com/cornelk/hashmap"
 	"github.com/go-faster/errors"
-	"github.com/goccy/go-json"
 	"github.com/jackc/pgx/v4"
 	"github.com/phuslu/log"
 	tele "gopkg.in/telebot.v3"
@@ -38,12 +37,6 @@ func InitStore(ctx context.Context, db *database.DB) (*Store, error) {
 			Name:        dbUser.Name,
 			IsAdmin:     dbUser.IsAdmin,
 			ActiveUntil: dbUser.ActiveUntil,
-		}
-
-		err = json.Unmarshal(dbUser.Settings.Bytes, &u.Settings)
-		if err != nil {
-			log.Debug().Err(err).Int64("user_id", u.ID).
-				Str("data", string(dbUser.Settings.Bytes)).Msg("Unmarshal settings")
 		}
 
 		topicID, dbErr := db.GetLastTopicID(ctx, u.ID)
@@ -85,12 +78,6 @@ func (s *Store) Get(id int64) *domain.User {
 		ID:      dbUser.ID,
 		Name:    dbUser.Name,
 		IsAdmin: dbUser.IsAdmin,
-	}
-
-	err = json.Unmarshal(dbUser.Settings.Bytes, &usr.Settings)
-	if err != nil {
-		log.Debug().Err(err).Int64("user_id", usr.ID).
-			Str("data", string(dbUser.Settings.Bytes)).Msg("Unmarshal settings")
 	}
 
 	s.cache.Set(dbUser.ID, usr)

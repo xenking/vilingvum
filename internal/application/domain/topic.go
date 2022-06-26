@@ -4,8 +4,6 @@ import (
 	"strings"
 
 	tele "gopkg.in/telebot.v3"
-
-	"github.com/xenking/vilingvum/pkg/utils"
 )
 
 type TopicType string
@@ -35,8 +33,6 @@ type TopicAnswer struct {
 	Correct bool   `json:"correct"`
 }
 
-var escape = strings.NewReplacer(".", `\.`, "#", `\#`, "=", `\=`, "+", `\+`, `-`, `\-`, `_`, `\_`)
-
 func (t *Topic) Send(bot *tele.Bot, recipient tele.Recipient, options *tele.SendOptions) (*tele.Message, error) {
 	options.ParseMode = tele.ModeMarkdownV2
 	options.Protected = true
@@ -44,22 +40,11 @@ func (t *Topic) Send(bot *tele.Bot, recipient tele.Recipient, options *tele.Send
 	return bot.Send(recipient, escape.Replace(t.Raw.String()), options)
 }
 
-type Topics []*Topic
+type Topics struct {
+	Data  []*Topic
+	Index []int
+}
 
-func (tt Topics) Send(bot *tele.Bot, recipient tele.Recipient, options *tele.SendOptions) (*tele.Message, error) {
-	options.ParseMode = tele.ModeMarkdownV2
-	options.Protected = true
-
-	var sb strings.Builder
-
-	for i, topic := range tt {
-		sb.WriteString(utils.WriteUint(int64(i + 1)))
-		sb.WriteString(". ")
-		sb.WriteString(topic.Raw.String())
-		if i != len(tt)-1 {
-			sb.WriteString("\n")
-		}
-	}
-
-	return bot.Send(recipient, escape.Replace(sb.String()), options)
+func (tt *Topics) Get(id int64) *Topic {
+	return tt.Data[id-1]
 }

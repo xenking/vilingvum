@@ -181,3 +181,4 @@ run:
 
   skip-dirs:
     - dist
+    - pkg/csv

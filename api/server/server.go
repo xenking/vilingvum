@@ -71,11 +71,13 @@ func (s *Server) setupMiddlewares(cfg *config.ServerConfig) *Server {
 		CacheDuration: 10 * time.Hour,
 		MaxAge:        int(time.Hour / time.Second),
 	})
+	//nolint:gocritic
 	// s.App.Use(notFoundHandler(cfg))
 
 	return s
 }
 
+//nolint:gocritic
 //func notFoundHandler(cfg config.ServerConfig) fiber.Handler {
 //	return func(ctx *fiber.Ctx) error {
 //
@@ -86,10 +88,6 @@ func (s *Server) setupMiddlewares(cfg *config.ServerConfig) *Server {
 //		return nil
 //	}
 //}
-
-func (s *Server) registerRoutes() *Server {
-	return s
-}
 
 func (s *Server) Serve(listener net.Listener) error {
 	return s.App.Listener(listener)

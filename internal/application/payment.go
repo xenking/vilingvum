@@ -3,9 +3,9 @@ package application
 import (
 	"context"
 	"fmt"
-	"github.com/go-faster/errors"
 	"strings"
 
+	"github.com/go-faster/errors"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/jackc/pgtype"
@@ -76,6 +76,7 @@ func (b *Bot) HandleSubscribe(ctx context.Context) tele.HandlerFunc {
 			return err
 		}
 
+		//nolint:gocritic
 		//markup := &tele.ReplyMarkup{
 		//	ResizeKeyboard:  true,
 		//}

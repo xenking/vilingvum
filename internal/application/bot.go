@@ -16,19 +16,18 @@ import (
 	"github.com/xenking/vilingvum/pkg/logger"
 )
 
-const (
-	PostEntryUnread = "unread"
-	PostEntryRead   = "read"
-)
-
 type Bot struct {
 	*tele.Bot
 	PaymentToken string
-	forwardIDs   []domain.ForwardID
-	db           *database.DB
-	users        *users.Store
-	actions      *hashmap.HashMap // map[int64]*domain.Action
-	retryTopics  *hashmap.HashMap // map[int64]map[int64]*domain.Topic
+
+	forwardIDs  []domain.ForwardID
+	dict        *domain.Dictionary
+	topics      *domain.Topics
+	videoTopics *domain.Topics
+	db          *database.DB
+	users       *users.Store
+	actions     *hashmap.HashMap // map[int64]*domain.Action
+	retryTopics *hashmap.HashMap // map[int64]map[int64]*domain.Topic
 }
 
 func New(ctx context.Context, cfg config.BotConfig, db *database.DB) (*Bot, error) {
@@ -47,10 +46,25 @@ func New(ctx context.Context, cfg config.BotConfig, db *database.DB) (*Bot, erro
 		return nil, err
 	}
 
+	dict, err := loadDictionary(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+
+	topics, err := loadTopics(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+
+	videoTopics := filterVideoTopics(topics)
+
 	bot := &Bot{
 		PaymentToken: cfg.PaymentToken,
 		Bot:          client,
 		db:           db,
+		dict:         dict,
+		topics:       topics,
+		videoTopics:  videoTopics,
 		users:        store,
 		actions:      &hashmap.HashMap{},
 		retryTopics:  &hashmap.HashMap{},
@@ -119,7 +133,7 @@ func (b *Bot) InitMenus(ctx context.Context) {
 
 	b.Handle(&btnCurrentTopic, b.HandleGetCurrentTopic(ctx))
 	b.Handle(&btnDict, b.GetDict(ctx))
-	b.Handle(&btnPrevTopics, b.HandleGetPrevTopics(ctx))
+	b.Handle(&btnPrevTopics, b.HandleGetVideoTopics(ctx))
 	b.Handle(&btnAbout, b.HandleAbout(ctx))
 	b.Handle(&btnFeedback, b.HandleFeedback(ctx))
 	b.Handle(&btnSubscribe, b.HandleSubscribe(ctx))
@@ -132,4 +146,8 @@ func (b *Bot) InitMenus(ctx context.Context) {
 	)
 
 	b.Handle(&btnUsers, b.GetUserInfo(ctx))
+}
+
+var emptyCallback = func(c tele.Context) error {
+	return nil
 }

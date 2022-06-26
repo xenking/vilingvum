@@ -3,6 +3,8 @@ package application
 import (
 	"context"
 	"math/rand"
+	"strings"
+	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/jackc/pgtype"
@@ -31,37 +33,56 @@ func (b *Bot) HandleGetCurrentTopic(ctx context.Context) tele.HandlerFunc {
 			return c.Send("All topics are available for subscription")
 		}
 
-		topic, err := b.loadTopic(ctx, currentTopicID)
+		topic := b.topics.Get(currentTopicID)
+
+		return c.Send(b.prepareTopic(ctx, topic, user.ID))
+	}
+}
+
+func loadTopics(ctx context.Context, db *database.DB) (*domain.Topics, error) {
+	dbTopic, err := db.GetTopics(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tt := make([]*domain.Topic, len(dbTopic))
+	for i, topic := range dbTopic {
+		tt[i] = &domain.Topic{}
+		err = json.Unmarshal(topic.Content.Bytes, tt[i])
 		if err != nil {
-			return err
+			return nil, err
 		}
-
-		return c.Send(b.prepareTopic(ctx, topic))
+		tt[i].ID = topic.ID
+		tt[i].NextTopicID = topic.NextTopicID.Int64
+		tt[i].Type = domain.TopicType(topic.Type)
 	}
+
+	return &domain.Topics{
+		Data: tt,
+	}, nil
 }
 
-func (b *Bot) loadTopic(ctx context.Context, topicID int64) (*domain.Topic, error) {
-	dbTopic, err := b.db.GetTopic(ctx, topicID)
-	if err != nil {
-		return nil, err
+func filterVideoTopics(tt *domain.Topics) *domain.Topics {
+	topics := &domain.Topics{
+		Index: make([]int, len(tt.Data)),
 	}
 
-	t := &domain.Topic{
-		ID:          dbTopic.ID,
-		NextTopicID: dbTopic.NextTopicID.Int64,
-		Type:        domain.TopicType(dbTopic.Type),
-	}
-	err = json.Unmarshal(dbTopic.Content.Bytes, t)
-	if err != nil {
-		return nil, err
+	for i, topic := range tt.Data {
+		topics.Index[i] = len(topics.Data)
+		if topic.Type == domain.TopicTypeVideo {
+			topics.Data = append(topics.Data, topic)
+		}
 	}
 
-	return t, nil
+	return topics
 }
 
-func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic) (*domain.Topic, *tele.ReplyMarkup) {
+func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic, userID int64) (*domain.Topic, *tele.ReplyMarkup) {
 	topic.Raw.Reset()
 
+	b.users.SetTopicID(userID, topic.ID)
+
+	//nolint:exhaustive
 	switch topic.Type {
 	case domain.TopicTypeVideo:
 		topic.Raw.WriteString("Next topic *")
@@ -101,7 +122,7 @@ func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic) (*domain.To
 
 		b.Handle(&nextBtn, b.HandleCallbackNextTopic(ctx, topic))
 
-		answers = append(answers, nextBtn)
+		answers = append(answers, nextBtn) //nolint:makezero
 	}
 
 	var rows []tele.Row
@@ -119,7 +140,7 @@ func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic) (*domain.To
 			sumLen = 0
 			lastSplit = i + 1
 			num = 0
-		case (num == 2 && sumLen > 37) || (num == 3 && sumLen > 47) || num >= 4:
+		case (num == 2 && sumLen > 37) || (num == 3 && sumLen > 40) || num >= 4:
 			rows = append(rows, answers[lastSplit:i])
 			sumLen = len(answers[i].Text)
 			lastSplit = i
@@ -141,6 +162,14 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 		user := b.getUser(c)
 		if user == nil {
 			return c.Send("You are not registered")
+		}
+
+		for _, buttons := range c.Callback().Message.ReplyMarkup.InlineKeyboard {
+			for _, btn := range buttons {
+				if strings.Contains(btn.Data, "answered") {
+					return nil
+				}
+			}
 		}
 
 		buf, err := json.Marshal(domain.UserAnswer{
@@ -167,7 +196,7 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 		if !answer.Correct {
 			rt, loaded := b.retryTopics.GetOrInsert(user.ID, map[int64]*domain.Topic{topic.ID: topic})
 			if loaded {
-				retryTopics := rt.(map[int64]*domain.Topic)
+				retryTopics := rt.(map[int64]*domain.Topic) //nolint:forcetypeassert
 				if _, exists := retryTopics[topic.ID]; !exists {
 					retryTopics[topic.ID] = topic
 				}
@@ -176,10 +205,13 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 
 		for i, buttons := range menu.InlineKeyboard {
 			for j, btn := range buttons {
+				b.Handle(&buttons[j], emptyCallback)
+
 				if btn.Text != answer.Text {
 					continue
 				}
 
+				btn.Data = "answered"
 				if !answer.Correct {
 					btn.Text = "❌ " + btn.Text
 					err = c.Respond(&tele.CallbackResponse{
@@ -204,16 +236,13 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 			return err
 		}
 
-		nextTopic, err := b.loadTopic(ctx, topic.NextTopicID)
-		if err != nil {
-			return err
-		}
+		nextTopic := b.topics.Get(topic.NextTopicID)
 
-		b.users.SetTopicID(user.ID, nextTopic.ID)
-
+		//nolint:exhaustive
 		switch nextTopic.Type {
 		case domain.TopicTypeVideo, domain.TopicTypeTestReport:
 			rt, exists := b.retryTopics.Get(user.ID)
+			retry := false
 
 			retryTopics, ok := rt.(map[int64]*domain.Topic)
 			if exists && ok && len(retryTopics) > 0 {
@@ -221,8 +250,16 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 					nextTopic = retryTopic
 					retryTopic.NextTopicID = topic.NextTopicID
 					delete(retryTopics, key)
+					retry = true
 
 					break
+				}
+			}
+
+			if !retry {
+				err = c.Send(getRandomCompliment())
+				if err != nil {
+					return err
 				}
 			}
 		}
@@ -237,7 +274,7 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 			return c.Send("All topics are available for subscription")
 		}
 
-		return c.Send(b.prepareTopic(ctx, nextTopic))
+		return c.Send(b.prepareTopic(ctx, nextTopic, user.ID))
 	}
 }
 
@@ -272,18 +309,13 @@ func (b *Bot) HandleCallbackNextTopic(ctx context.Context, topic *domain.Topic) 
 			return c.Send("All topics are available for subscription")
 		}
 
-		nextTopic, err := b.loadTopic(ctx, topic.NextTopicID)
-		if err != nil {
-			return err
-		}
+		nextTopic := b.topics.Get(topic.NextTopicID)
 
-		b.users.SetTopicID(user.ID, nextTopic.ID)
-
-		return c.Send(b.prepareTopic(ctx, nextTopic))
+		return c.Send(b.prepareTopic(ctx, nextTopic, user.ID))
 	}
 }
 
-func (b *Bot) HandleGetPrevTopics(ctx context.Context) tele.HandlerFunc {
+func (b *Bot) HandleGetVideoTopics(ctx context.Context) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		b.ResetAction(c)
 
@@ -292,39 +324,94 @@ func (b *Bot) HandleGetPrevTopics(ctx context.Context) tele.HandlerFunc {
 			return c.Send("You are not registered")
 		}
 
-		tt, err := b.db.GetPreviousTopics(ctx, &database.GetPreviousTopicsParams{
-			UserID: user.ID,
-			Type:   string(domain.TopicTypeVideo),
-		})
+		lastTopicID, err := b.db.GetLatestTopicID(ctx, user.ID)
 		if err != nil {
 			return err
 		}
 
-		if len(tt) == 0 {
-			return c.Send("You have no previous topics")
+		opts := &tele.SendOptions{
+			ParseMode: tele.ModeMarkdownV2,
+			Protected: true,
 		}
 
-		topics := make(domain.Topics, len(tt))
+		var sb strings.Builder
 
-		for i, dbTopic := range tt {
-			topic := &domain.Topic{
-				ID:          dbTopic.ID,
-				NextTopicID: dbTopic.NextTopicID.Int64,
-				Type:        domain.TopicType(dbTopic.Type),
+		if lastTopicID < 2 {
+			sb.WriteString("You have no previous topics")
+		} else {
+			idx := b.videoTopics.Index[lastTopicID]
+
+			sb.WriteString("Previous topics:\n")
+
+			topicsRaw := b.paginationVideoTopics(1, int64(idx))
+			sb.WriteString(topicsRaw)
+
+			if idx/PaginationPageSize > 0 {
+				opts.ReplyMarkup = b.paginationMenu(ctx, 1, int64(idx), b.HandleCallbackVideoTopics)
 			}
-			err = json.Unmarshal(dbTopic.Content.Bytes, topic)
-			if err != nil {
-				return err
-			}
-
-			topic.Raw.Reset()
-			topic.Raw.WriteString(topic.Text)
-			topic.Raw.WriteByte('\n')
-			topic.Raw.WriteString(topic.VideoURL)
-
-			topics[i] = topic
 		}
 
-		return c.Send(topics)
+		return c.Send(domain.EscapeString(sb.String()), opts)
 	}
+}
+
+func (b *Bot) paginationVideoTopics(page, lastIdx int64) string {
+	var sb strings.Builder
+
+	page--
+
+	end := (page + 1) * PaginationPageSize
+	if lastIdx < end {
+		end = lastIdx
+	}
+
+	for i := page * PaginationPageSize; i < end && i < int64(len(b.videoTopics.Data)); i++ {
+		sb.WriteString(utils.WriteUint(i + 1))
+		sb.WriteString(". ")
+		sb.WriteString(b.videoTopics.Data[i].Text)
+		sb.WriteByte('\n')
+		sb.WriteString(b.videoTopics.Data[i].VideoURL)
+
+		if i != end-1 {
+			sb.WriteByte('\n')
+		}
+	}
+
+	return sb.String()
+}
+
+func (b *Bot) HandleCallbackVideoTopics(ctx context.Context, page, lastIdx int64) tele.HandlerFunc {
+	return func(c tele.Context) error {
+		user := b.getUser(c)
+		if user == nil {
+			return c.Send("You are not registered")
+		}
+
+		opts := &tele.SendOptions{
+			ParseMode: tele.ModeMarkdownV2,
+			Protected: true,
+		}
+
+		var sb strings.Builder
+		sb.WriteString("Previous topics:\n")
+
+		topicsRaw := b.paginationVideoTopics(page, lastIdx)
+		sb.WriteString(topicsRaw)
+
+		opts.ReplyMarkup = b.paginationMenu(ctx, page, lastIdx, b.HandleCallbackVideoTopics)
+
+		return c.Edit(domain.EscapeString(sb.String()), opts)
+	}
+}
+
+var rnd = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
+
+func getRandomCompliment() string {
+	compliments := []string{
+		"Excellent! 🎉", "It’s a way to go! 🎉", "Good job! 🎉", "Second to none! 🎉",
+		"Fantastic results! 🎉", "I’m proud of you! 🎉",
+	}
+	idx := rnd.Intn(len(compliments))
+
+	return compliments[idx]
 }

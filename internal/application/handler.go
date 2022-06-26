@@ -20,8 +20,7 @@ func (b *Bot) HandleStart(ctx context.Context) tele.HandlerFunc {
 		user := b.users.Get(c.Sender().ID)
 
 		if user == nil {
-			var err error
-			user, err = b.users.Add(ctx, c.Sender())
+			_, err := b.users.Add(ctx, c.Sender())
 			if err != nil {
 				return err
 			}
@@ -33,6 +32,7 @@ func (b *Bot) HandleStart(ctx context.Context) tele.HandlerFunc {
 			reply = menu.Main
 		}
 
+		//nolint:gocritic
 		// TODO: invite system?
 		//if c.Message().Payload != "" {
 		//	active := time.Now().AddDate(0, 1, 0)
@@ -64,7 +64,7 @@ func (b *Bot) HandleFeedback(ctx context.Context) tele.HandlerFunc {
 		}
 		b.actions.Set(c.Sender().ID, domain.ActionFeedback)
 
-		return c.Send(b.prepareTopic(ctx, t))
+		return c.Send(b.prepareTopic(ctx, t, c.Sender().ID))
 	}
 }
 

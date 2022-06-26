@@ -7,9 +7,8 @@ import (
 )
 
 type User struct {
-	Name        string
-	Settings    UserSetting
 	ActiveUntil *time.Time
+	Name        string
 	ID          int64
 	IsAdmin     bool
 }
@@ -20,8 +19,6 @@ const (
 	UserStatusActive   UserStatus = "active"
 	UserStatusInactive UserStatus = "inactive"
 )
-
-type UserSetting struct{}
 
 type UserAnswer struct {
 	TopicType TopicType   `json:"topic_type"`
