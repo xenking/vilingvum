@@ -46,12 +46,12 @@ func New(ctx context.Context, cfg config.BotConfig, db *database.DB) (*Bot, erro
 		return nil, err
 	}
 
-	dict, err := loadDictionary(ctx, db)
+	topics, err := loadTopics(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 
-	topics, err := loadTopics(ctx, db)
+	dict, err := loadDictionary(ctx, int64(len(topics.Data)), db)
 	if err != nil {
 		return nil, err
 	}

@@ -11,7 +11,7 @@ import (
 	"github.com/xenking/vilingvum/pkg/utils"
 )
 
-func loadDictionary(ctx context.Context, db *database.DB) (*domain.Dictionary, error) {
+func loadDictionary(ctx context.Context, lastTopicID int64, db *database.DB) (*domain.Dictionary, error) {
 	dbDict, err := db.GetDictionary(ctx)
 	if err != nil {
 		return nil, err
@@ -19,10 +19,10 @@ func loadDictionary(ctx context.Context, db *database.DB) (*domain.Dictionary, e
 
 	dict := &domain.Dictionary{
 		Data:  make([]domain.DictRecord, len(dbDict)),
-		Index: make([]int, dbDict[len(dbDict)-1].TopicID),
+		Index: make([]int, lastTopicID),
 	}
 
-	lastTopicID := dbDict[0].TopicID
+	prevTopicID := dbDict[0].TopicID
 	for i, r := range dbDict {
 		dict.Data[i] = domain.DictRecord{
 			Word:    r.Word,
@@ -31,10 +31,14 @@ func loadDictionary(ctx context.Context, db *database.DB) (*domain.Dictionary, e
 			ID:      r.ID,
 		}
 
-		for id := lastTopicID; id < r.TopicID; id++ {
+		for id := prevTopicID; id < r.TopicID; id++ {
 			dict.Index[id] = i
-			lastTopicID = r.TopicID
+			prevTopicID = r.TopicID
 		}
+	}
+
+	for id := prevTopicID; id < lastTopicID; id++ {
+		dict.Index[id] = len(dict.Data)
 	}
 
 	return dict, nil

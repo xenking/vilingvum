@@ -25,9 +25,10 @@ func ReadRows(f *os.File) ([]*Row, error) {
 }
 
 type Row struct {
+	Level      string
 	Day        string
-	Video      string
 	Title      string
+	Topic      string
 	Exercise1  exercise1
 	Exercise2  exercise2
 	Exercise3  exercise3
@@ -36,47 +37,54 @@ type Row struct {
 }
 
 func (r *Row) UnmarshalCSV(_, values []string) error {
-	if len(values) < 30 {
+	if len(values) < 31 {
 		return errors.New("invalid row")
 	}
 
-	r.Day = values[0]
-	r.Video = values[1]
+	r.Level = values[0]
+	r.Day = values[1]
 	r.Title = values[2]
+	r.Topic = values[3]
 	r.Exercise1 = exercise1{
-		Title:       values[3],
-		Description: values[4],
-		Question:    values[5],
-		Correct:     values[6],
+		Title:       strings.TrimSpace(values[4]),
+		Description: strings.TrimSpace(values[5]),
+		Question:    values[6],
+		Correct:     values[7],
 	}
-	for _, value := range values[7:10] {
+	for _, value := range values[8:11] {
 		if value != "" {
 			r.Exercise1.Incorrect = append(r.Exercise1.Incorrect, value)
 		}
 	}
 	r.Exercise2 = exercise2{
-		Title:       values[10],
-		Description: values[11],
-		Correct:     values[12],
-		Question:    values[20],
+		Title:       strings.TrimSpace(values[11]),
+		Description: strings.TrimSpace(values[12]),
+		Correct:     values[13],
+		Question:    values[21],
 	}
-	for _, value := range values[13:20] {
+	for _, value := range values[14:21] {
 		if value != "" {
 			r.Exercise2.Incorrect = append(r.Exercise2.Incorrect, value)
 		}
 	}
 	r.Exercise3 = exercise3{
-		Title:       values[21],
-		Description: values[22],
-		Question:    values[23],
-		Correct:     []string{values[24], values[26]},
-		Incorrect:   values[25],
+		Title:       strings.TrimSpace(values[22]),
+		Description: strings.TrimSpace(values[23]),
+		Question:    values[24],
+		Correct:     []string{values[25], values[27]},
+		Incorrect:   values[26],
 	}
 	r.Dictionary = dictionary{
-		Word:    values[27],
-		Meaning: values[28],
+		Word:    strings.TrimSpace(values[28]),
+		Meaning: strings.TrimSpace(values[29]),
 	}
-	r.VideoURLs = strings.Split(values[29], ",")
+	r.VideoURLs = strings.Split(values[30], ",")
+	if len(r.VideoURLs) == 1 && r.VideoURLs[0] == "" {
+		r.VideoURLs = nil
+	}
+	for i, url := range r.VideoURLs {
+		r.VideoURLs[i] = strings.TrimSpace(url)
+	}
 
 	return nil
 }

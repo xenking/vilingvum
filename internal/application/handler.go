@@ -60,7 +60,7 @@ func (b *Bot) HandleFeedback(ctx context.Context) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		t := &domain.Topic{
 			Text: "Write your feedback here and I will send it to the teacher",
-			Type: domain.TopicTypeTestReport,
+			Type: domain.TopicTestReport,
 		}
 		b.actions.Set(c.Sender().ID, domain.ActionFeedback)
 

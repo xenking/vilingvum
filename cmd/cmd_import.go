@@ -60,17 +60,18 @@ func importDatabase(ctx context.Context, db *database.DB, cfg config.ImportConfi
 
 	var prevTopicID int64 = -1
 	var prevTopicType domain.TopicType
-	for _, row := range rows {
-		topicType := domain.TopicTypeQuestion
-		if strings.HasPrefix(row.Video, "Progress test") {
-			topicType = domain.TopicTypeTest
-		}
+	var prevTopicTitle string
 
-		if prevTopicType == domain.TopicTypeTest &&
-			topicType != domain.TopicTypeTest {
+	for _, row := range rows {
+		topicType := domain.TopicQuestion
+		if strings.Contains(row.Title, "test") {
+			topicType = domain.TopicTest
+		}
+		if prevTopicType == domain.TopicTest &&
+			topicType != domain.TopicTest {
 			t := &domain.Topic{
 				Text: "Please, send your video or audio feedback. Use the new vocabulary from the previous topic",
-				Type: domain.TopicTypeTestReport,
+				Type: domain.TopicTestReport,
 			}
 			prevTopicID, err = createTopic(ctx, db, t, prevTopicID)
 			if err != nil {
@@ -78,26 +79,46 @@ func importDatabase(ctx context.Context, db *database.DB, cfg config.ImportConfi
 			}
 		}
 
-		for i, url := range row.VideoURLs {
-			if _, ok := urls[url]; ok {
-				continue
-			}
-			urls[url] = struct{}{}
-
+		if prevTopicType != domain.TopicTest &&
+			topicType == domain.TopicTest {
 			t := &domain.Topic{
-				Type:       domain.TopicTypeVideo,
-				VideoURL:   url,
-				NextButton: "📝 Start exercises",
-			}
-			if i == 0 {
-				t.Text = row.Title
-			}
-			if i != len(row.VideoURLs)-1 {
-				t.NextButton = "▶️ Next video"
+				Type:       domain.TopicTestTitle,
+				Text:       row.Title,
+				NextButton: "📝 Start test",
 			}
 			prevTopicID, err = createTopic(ctx, db, t, prevTopicID)
 			if err != nil {
 				return err
+			}
+		}
+
+		if len(row.VideoURLs) > 0 {
+			if strings.Contains(row.Title, "Повтор") &&
+				!strings.Contains(prevTopicTitle, "Повтор") {
+
+				t := &domain.Topic{
+					Type:       domain.TopicRepeatVideo,
+					VideoURL:   row.VideoURLs,
+					Text:       row.Topic,
+					NextButton: "📝 Start exercises",
+				}
+				prevTopicID, err = createTopic(ctx, db, t, prevTopicID)
+				if err != nil {
+					return err
+				}
+			} else if _, ok := urls[row.VideoURLs[0]]; !ok {
+				urls[row.VideoURLs[0]] = struct{}{}
+
+				t := &domain.Topic{
+					Type:       domain.TopicVideo,
+					VideoURL:   []string{row.VideoURLs[0]},
+					Text:       row.Topic,
+					NextButton: "📝 Start exercises",
+				}
+				prevTopicID, err = createTopic(ctx, db, t, prevTopicID)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -183,6 +204,7 @@ func importDatabase(ctx context.Context, db *database.DB, cfg config.ImportConfi
 		}
 
 		prevTopicType = topicType
+		prevTopicTitle = row.Title
 	}
 
 	return nil

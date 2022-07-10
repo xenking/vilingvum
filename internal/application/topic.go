@@ -69,7 +69,7 @@ func filterVideoTopics(tt *domain.Topics) *domain.Topics {
 
 	for i, topic := range tt.Data {
 		topics.Index[i] = len(topics.Data)
-		if topic.Type == domain.TopicTypeVideo {
+		if topic.Type == domain.TopicVideo {
 			topics.Data = append(topics.Data, topic)
 		}
 	}
@@ -84,16 +84,28 @@ func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic, userID int6
 
 	//nolint:exhaustive
 	switch topic.Type {
-	case domain.TopicTypeVideo:
-		topic.Raw.WriteString("Next topic *")
+	case domain.TopicVideo:
+		topic.Raw.WriteString("New topic (Easy) - *")
 		topic.Raw.WriteString(topic.Text)
 		topic.Raw.WriteString("*:\n")
-		topic.Raw.WriteString(topic.VideoURL)
-	case domain.TopicTypeQuestion, domain.TopicTypeTest:
+		topic.Raw.WriteString(topic.VideoURL[0])
+	case domain.TopicRepeatVideo:
+		topic.Raw.WriteString("Repeat topics (Middle) - *")
 		topic.Raw.WriteString(topic.Text)
-		topic.Raw.WriteString(":\n*")
+		topic.Raw.WriteString("*:\n")
+		for _, url := range topic.VideoURL {
+			topic.Raw.WriteString(url)
+			topic.Raw.WriteString("\n")
+		}
+	case domain.TopicTestTitle:
+		topic.Raw.WriteString(topic.Text)
+		topic.Raw.WriteString(" (Hard)")
+		topic.Raw.WriteString(":\n")
+	case domain.TopicQuestion, domain.TopicTest:
+		topic.Raw.WriteString(topic.Text)
+		topic.Raw.WriteString(": *")
 		topic.Raw.WriteString(topic.Question)
-		topic.Raw.WriteByte('*')
+		topic.Raw.WriteString("*\n")
 	default:
 		topic.Raw.WriteString(topic.Text)
 	}
@@ -126,6 +138,7 @@ func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic, userID int6
 	}
 
 	var rows []tele.Row
+	// https://goplay.tools/snippet/GjW0YxPbDOj
 
 	var sumLen, lastSplit, num int
 	for i := range answers {
@@ -140,7 +153,12 @@ func (b *Bot) prepareTopic(ctx context.Context, topic *domain.Topic, userID int6
 			sumLen = 0
 			lastSplit = i + 1
 			num = 0
-		case (num == 2 && sumLen > 37) || (num == 3 && sumLen > 40) || num >= 4:
+		case num == 2 && (sumLen-len(answers[i].Text)*2 < -10 || sumLen-len(answers[i].Text)*2 > 10):
+			rows = append(rows, answers[lastSplit:i])
+			sumLen = len(answers[i].Text)
+			lastSplit = i
+			num = 1
+		case (num == 2 && sumLen > 34) || (num == 3 && sumLen > 30) || num >= 4:
 			rows = append(rows, answers[lastSplit:i])
 			sumLen = len(answers[i].Text)
 			lastSplit = i
@@ -240,7 +258,7 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 
 		//nolint:exhaustive
 		switch nextTopic.Type {
-		case domain.TopicTypeVideo, domain.TopicTypeTestReport:
+		case domain.TopicVideo, domain.TopicTestReport, domain.TopicTestTitle, domain.TopicRepeatVideo:
 			rt, exists := b.retryTopics.Get(user.ID)
 			retry := false
 
@@ -264,7 +282,7 @@ func (b *Bot) HandleCallbackAnswer(ctx context.Context, topic *domain.Topic, ans
 			}
 		}
 
-		if nextTopic.Type == domain.TopicTypeTestReport {
+		if nextTopic.Type == domain.TopicTestReport {
 			b.actions.Set(user.ID, domain.ActionTestReport)
 		}
 
@@ -370,7 +388,7 @@ func (b *Bot) paginationVideoTopics(page, lastIdx int64) string {
 		sb.WriteString(". ")
 		sb.WriteString(b.videoTopics.Data[i].Text)
 		sb.WriteByte('\n')
-		sb.WriteString(b.videoTopics.Data[i].VideoURL)
+		sb.WriteString(b.videoTopics.Data[i].VideoURL[0])
 
 		if i != end-1 {
 			sb.WriteByte('\n')

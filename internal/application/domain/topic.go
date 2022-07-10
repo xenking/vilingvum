@@ -9,15 +9,17 @@ import (
 type TopicType string
 
 const (
-	TopicTypeVideo      TopicType = "video"
-	TopicTypeQuestion   TopicType = "question"
-	TopicTypeTest       TopicType = "test"
-	TopicTypeTestReport TopicType = "report"
+	TopicVideo       TopicType = "video"
+	TopicRepeatVideo TopicType = "repeat"
+	TopicTestTitle   TopicType = "test_title"
+	TopicQuestion    TopicType = "question"
+	TopicTest        TopicType = "test"
+	TopicTestReport  TopicType = "report"
 )
 
 type Topic struct {
 	Text       string        `json:"text,omitempty"`
-	VideoURL   string        `json:"video_url,omitempty"`
+	VideoURL   []string      `json:"video_url,omitempty"`
 	Question   string        `json:"question,omitempty"`
 	NextButton string        `json:"next_button,omitempty"`
 	Answers    []TopicAnswer `json:"answers,omitempty"`
